@@ -12,6 +12,10 @@ import logging
 # from logging.handlers import RotatingFileHandler
 from logging.handlers import TimedRotatingFileHandler
 
+# Регистрация адаптера и конвертера для дат
+sqlite3.register_adapter(datetime, lambda d: d.isoformat())
+sqlite3.register_converter("DATETIME", lambda x: datetime.fromisoformat(x.decode()))
+
 # # Настройка логирования с ротацией
 # log_handler = RotatingFileHandler(
 #     '/home/user/rss_scraper/futures_scraper.log',
@@ -20,7 +24,7 @@ from logging.handlers import TimedRotatingFileHandler
 # )
 # Настройка логирования с ротацией по времени
 log_handler = TimedRotatingFileHandler(
-    '/home/user/rss_scraper/rss_scraper.log',
+    '/home/user/rss_scraper/futures_scraper.log',
     when='midnight',  # Новый файл каждый день в полночь
     interval=1,
     backupCount=7  # Хранить логи за 7 дней
@@ -35,17 +39,17 @@ def create_tables(connection: sqlite3.Connection) -> None:
         with connection:
             connection.execute('''
                 CREATE TABLE IF NOT EXISTS Futures (
-                    TRADEDATE DATE PRIMARY KEY UNIQUE NOT NULL,
+                    TRADEDATE DATETIME PRIMARY KEY UNIQUE NOT NULL,
                     SECID TEXT NOT NULL,
                     OPEN REAL NOT NULL,
                     LOW REAL NOT NULL,
                     HIGH REAL NOT NULL,
                     CLOSE REAL NOT NULL,
-                    LSTTRADE DATE NOT NULL
+                    LSTTRADE DATETIME NOT NULL
                 )
             ''')
             logging.info('Таблица Futures в БД создана или уже существует')
-    except sqlite3.OperationalError as e:
+    except sqlite3.Error as e:
         logging.error(f"Ошибка при создании таблицы Futures: {e}")
 
 def non_empty_table_futures(connection, cursor):

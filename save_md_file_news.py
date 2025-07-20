@@ -124,7 +124,7 @@ def main(path_db_quote: Path, path_db_news: Path, md_news_dir: Path) -> None:
 if __name__ == '__main__':
     path_db_quote = Path(fr'c:\Users\Alkor\gd\data_beget_rss\RTS_day_rss_2025.db')
     path_db_news = Path(fr'C:\Users\Alkor\gd\data_beget_rss\rss_news_investing.db')
-    md_news_dir = Path('c:/news')
+    md_news_dir = Path('c:/Users/Alkor/gd/news_rss_md')
 
     if not path_db_quote.exists():
         print("Ошибка: Файл базы данных котировок не найден.")
