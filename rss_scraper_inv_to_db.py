@@ -1,3 +1,6 @@
+"""
+RSS Scraper for Investing.com News
+"""
 import asyncio
 import aiohttp
 import requests

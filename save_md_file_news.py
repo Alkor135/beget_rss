@@ -111,7 +111,7 @@ def main(path_db_quote: Path, path_db_news: Path, md_news_dir: Path) -> None:
 
         print(f"{file_name} Дата max: {date_max}, Дата min: {date_min}")
         df_news = read_db_news(path_db_news, date_max_gmt, date_min_gmt)
-        print(df_news)
+        # print(df_news)
         if len(df_news) == 0:
             break
 
@@ -123,13 +123,13 @@ def main(path_db_quote: Path, path_db_news: Path, md_news_dir: Path) -> None:
 
 if __name__ == '__main__':
     ticker = 'RTS'
-    path_db_quote = Path(fr'c:\Users\Alkor\gd\data_quote_db\{ticker}_day_rss_2025.db')
-    # path_db_quote = Path(fr'c:\Users\Alkor\gd\data_beget_rss\RTS_day_rss_2025.db')
+    # path_db_quote = Path(fr'c:\Users\Alkor\gd\data_quote_db\{ticker}_day_rss_2025.db')
+    path_db_quote = Path(fr'c:\Users\Alkor\gd\data_beget_rss\{ticker}_day_rss_2025.db')
     path_db_news = Path(fr'C:\Users\Alkor\gd\data_beget_rss\rss_news_investing.db')
     md_news_dir = Path('c:/Users/Alkor/gd/news_rss_md')
 
     if not path_db_quote.exists():
-        print("Ошибка: Файл базы данных котировок не найден.")
+        print(f"Ошибка: Файл базы данных котировок не найден. {path_db_quote}")
         exit()
 
     if not path_db_news.exists():

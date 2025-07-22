@@ -34,7 +34,7 @@ def download_files():
             '/home/user/rss_scraper/rss_news_investing.db',
             '/home/user/rss_scraper/RTS_day_rss_2025.db',
             '/home/user/rss_scraper/rss_scraper.log',
-            '/home/user/rss_scraper/futures_scraper.log'
+            '/home/user/rss_scraper/quote_download_to_db.log'
         ]
 
         # Настройка SSH-клиента
