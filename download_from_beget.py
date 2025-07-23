@@ -1,3 +1,7 @@
+"""
+Скрипт для скачивания файлов с сервера Beget по SSH с использованием библиотеки Paramiko.
+"""
+
 import paramiko
 from pathlib import Path
 import os

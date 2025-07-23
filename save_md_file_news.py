@@ -1,3 +1,7 @@
+"""
+Скрипт для чтения базы данных котировок и новостей, формирования markdown-файлов с заголовками новостей
+"""
+
 import pandas as pd
 from pathlib import Path
 import sqlite3
