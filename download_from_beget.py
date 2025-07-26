@@ -4,7 +4,6 @@
 
 import paramiko
 from pathlib import Path
-import os
 import logging
 from datetime import datetime
 from logging.handlers import TimedRotatingFileHandler
@@ -37,8 +36,10 @@ def download_files():
         remote_files = [
             '/home/user/rss_scraper/rss_news_investing.db',
             '/home/user/rss_scraper/RTS_day_rss_2025.db',
+            '/home/user/rss_scraper/MIX_day_rss_2025.db',
             '/home/user/rss_scraper/rss_scraper.log',
-            '/home/user/rss_scraper/quote_download_to_db.log'
+            '/home/user/rss_scraper/rts_quote_download_to_db.log',
+            '/home/user/rss_scraper/mix_quote_download_to_db.log'
         ]
 
         # Настройка SSH-клиента

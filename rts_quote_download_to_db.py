@@ -13,10 +13,10 @@ from logging.handlers import TimedRotatingFileHandler
 
 # Настройка логирования с ротацией по времени
 log_handler = TimedRotatingFileHandler(
-    '/home/user/rss_scraper/quote_download_to_db.log',
+    '/home/user/rss_scraper/rts_quote_download_to_db.log',
     when='midnight',  # Новый файл каждый день в полночь
     interval=1,
-    backupCount=7  # Хранить логи за 7 дней
+    backupCount=2  # Хранить логи за 2 дней
 )
 log_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 logging.getLogger('').setLevel(logging.INFO)
