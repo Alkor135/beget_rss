@@ -113,7 +113,7 @@ def main(path_db_quote: Path, path_db_news: Path, md_news_dir: Path) -> None:
         date_max_gmt = msk_to_gmt(date_max)
         date_min_gmt = msk_to_gmt(date_min)
 
-        print(f"{file_name} Дата max: {date_max}, Дата min: {date_min}")
+        print(f"{file_name}. Новости за период: {date_min} - {date_max}")
         df_news = read_db_news(path_db_news, date_max_gmt, date_min_gmt)
         # print(df_news)
         if len(df_news) == 0:
