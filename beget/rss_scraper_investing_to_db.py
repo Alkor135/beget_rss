@@ -15,7 +15,7 @@ from logging.handlers import TimedRotatingFileHandler
 
 # Настройка логирования с ротацией по времени
 log_handler = TimedRotatingFileHandler(
-    '/home/user/rss_scraper/rss_scraper.log',
+    '/home/user/rss_scraper/log/rss_scraper.log',
     when='midnight',  # Новый файл каждый день в полночь
     interval=1,
     backupCount=7  # Хранить логи за 7 дней
@@ -180,5 +180,5 @@ def main(url: str, db_path: str) -> None:
 
 if __name__ == '__main__':
     URL = "https://ru.investing.com/webmaster-tools/rss"
-    DB_PATH = "/home/user/rss_scraper/rss_news_investing.db"
+    DB_PATH = "/home/user/rss_scraper/db_data/rss_news_investing.db"
     main(URL, DB_PATH)

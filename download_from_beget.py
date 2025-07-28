@@ -8,9 +8,13 @@ import logging
 from datetime import datetime
 from logging.handlers import TimedRotatingFileHandler
 
+# Создание папки для логов перед настройкой логирования
+log_dir = Path('C:\\Users\\Alkor\\gd\\data_beget_rss\\log')
+log_dir.mkdir(parents=True, exist_ok=True)
+
 # Настройка логирования с ротацией по времени
 log_handler = TimedRotatingFileHandler(
-    'C:\\Users\\Alkor\\gd\\data_beget_rss\\download_log.log',
+    'C:\\Users\\Alkor\\gd\\data_beget_rss\\log\\download_log.log',
     when='midnight',  # Новый файл каждый день в полночь
     interval=1,
     backupCount=7,    # Хранить логи за 7 дней
@@ -28,18 +32,20 @@ def download_files():
         username = 'root'           # Имя пользователя
         key_path = 'C:\\Users\\Alkor\\.ssh\\id_rsa'  # Путь к приватному SSH-ключу
 
-        # Локальная папка для сохранения
-        local_dir = Path('C:\\Users\\Alkor\\gd\\data_beget_rss')
-        local_dir.mkdir(parents=True, exist_ok=True)
+        # Локальные папки для сохранения
+        local_db_dir = Path('C:\\Users\\Alkor\\gd\\data_beget_rss')  # Для баз данных
+        local_log_dir = Path('C:\\Users\\Alkor\\gd\\data_beget_rss\\log')  # Для логов
+        local_db_dir.mkdir(parents=True, exist_ok=True)
+        local_log_dir.mkdir(parents=True, exist_ok=True)
 
         # Файлы для скачивания с сервера
         remote_files = [
-            '/home/user/rss_scraper/rss_news_investing.db',
-            '/home/user/rss_scraper/RTS_day_rss_2025.db',
-            '/home/user/rss_scraper/MIX_day_rss_2025.db',
-            '/home/user/rss_scraper/rss_scraper.log',
-            '/home/user/rss_scraper/rts_quote_download_to_db.log',
-            '/home/user/rss_scraper/mix_quote_download_to_db.log'
+            ('/home/user/rss_scraper/db_data/rss_news_investing.db', local_db_dir),
+            ('/home/user/rss_scraper/db_data/RTS_day_rss_2025.db', local_db_dir),
+            ('/home/user/rss_scraper/db_data/MIX_day_rss_2025.db', local_db_dir),
+            ('/home/user/rss_scraper/log/rss_scraper.log', local_log_dir),
+            ('/home/user/rss_scraper/log/rts_quote_download_to_db.log', local_log_dir),
+            ('/home/user/rss_scraper/log/mix_quote_download_to_db.log', local_log_dir)
         ]
 
         # Настройка SSH-клиента
@@ -49,7 +55,7 @@ def download_files():
 
         # Создание SFTP-клиента
         with ssh_client.open_sftp() as sftp:
-            for remote_file in remote_files:
+            for remote_file, local_dir in remote_files:
                 try:
                     sftp.stat(remote_file)  # Проверка существования файла на сервере
                     local_file = local_dir / Path(remote_file).name

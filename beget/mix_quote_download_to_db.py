@@ -13,7 +13,7 @@ from logging.handlers import TimedRotatingFileHandler
 
 # Настройка логирования с ротацией по времени
 log_handler = TimedRotatingFileHandler(
-    '/home/user/rss_scraper/mix_quote_download_to_db.log',
+    '/home/user/rss_scraper/log/mix_quote_download_to_db.log',
     when='midnight',  # Новый файл каждый день в полночь
     interval=1,
     backupCount=2  # Хранить логи за 2 дней
@@ -198,6 +198,6 @@ def main(ticker, path_db, start_date):
 
 if __name__ == '__main__':
     ticker = 'MIX'
-    path_db = Path(fr'/home/user/rss_scraper/{ticker}_day_rss_2025.db')
+    path_db = Path(fr'/home/user/rss_scraper/db_data/{ticker}_day_rss_2025.db')
     start_date = datetime.strptime('2025-01-01', "%Y-%m-%d").date()
     main(ticker, path_db, start_date)
