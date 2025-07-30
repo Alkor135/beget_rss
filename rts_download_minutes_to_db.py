@@ -138,7 +138,7 @@ def get_future_date_results(
         cursor: sqlite3.Cursor) -> None:
     """Получает данные по фьючерсам с MOEX ISS API и сохраняет их в базу данных."""
     today_date = datetime.now().date()  # Текущая дата и время
-    while start_date < today_date:  # Пока start_date меньше текущей даты
+    while start_date <= today_date:  # Пока start_date меньше текущей даты
         # Проверяем наличие даты в поле TRADEDATE
         query = "SELECT 1 FROM Futures WHERE TRADEDATE = ? LIMIT 1"
         cursor.execute(query, (start_date.strftime('%Y-%m-%d'),))

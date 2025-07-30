@@ -57,38 +57,39 @@ def save_titles_to_markdown(df_news: pd.DataFrame, file_path: Path, next_bar: st
     """
     with open(file_path, 'w', encoding='utf-8') as file:
         # Метаданные в формате markdown front matter
-        file.write(f"---\nnext_bar: {next_bar}  \ndate_min: {date_min}  \ndate_max: {date_max}\n---\n\n")
+        file.write(f"---\nnext_bar: {next_bar}\ndate_min: {date_min}\ndate_max: {date_max}\n---\n\n")
         for _, row in df_news.iterrows():
             title = row['title']
             file.write(f"- {title}\n")  # Записываем только заголовок в файл
 
 
-def save_latest_titles_to_markdown(db_path_news: Path, db_path_quote: Path,
-                                   md_news_dir: Path) -> None:
-    """
-    Создает markdown-файл с заголовками новостей начиная с максимальной даты в базе котировок
-    с 18:45 МСК и метаданными next_bar: current, date_max: current.
-    """
-    # Получаем максимальную дату из базы котировок
-    df_quote = read_db_quote(db_path_quote)
-    df_quote['TRADEDATE'] = pd.to_datetime(df_quote['TRADEDATE'])
-    max_date = df_quote['TRADEDATE'].max()
-    max_date_str = max_date.strftime("%Y-%m-%d")
-
-    # Формируем начальную дату
-    date_min = f"{max_date_str} 21:00:00"
-    date_min_gmt = msk_to_gmt(date_min)
-
-    # Читаем новости начиная с date_min_gmt
-    df_news = read_db_news_from_date(db_path_news, date_min_gmt)
-
-    if len(df_news) > 0:
-        # Формируем имя файла
-        file_name = f"current.md"
-        file_path = md_news_dir / file_name
-
-        # Сохраняем новости с метаданными next_bar: current, date_max: current
-        save_titles_to_markdown(df_news, file_path, "current", date_min_gmt, "current")
+# def save_latest_titles_to_markdown(db_path_news: Path, db_path_quote: Path,
+#                                    md_news_dir: Path) -> None:
+#     """
+#     Создает markdown-файл с заголовками новостей начиная с максимальной даты в базе котировок
+#     с 21:00 МСК и метаданными next_bar: current, date_max: current.
+#     """
+#     # Получаем максимальную дату из базы котировок
+#     df_quote = read_db_quote(db_path_quote)
+#     df_quote['TRADEDATE'] = pd.to_datetime(df_quote['TRADEDATE'])
+#     max_date = df_quote['TRADEDATE'].max()
+#     max_date_str = max_date.strftime("%Y-%m-%d")
+#     print(f'{max_date_str=}')
+#
+#     # Формируем начальную дату
+#     date_min = f"{max_date_str} 21:00:00"
+#     date_min_gmt = msk_to_gmt(date_min)
+#
+#     # Читаем новости начиная с date_min_gmt
+#     df_news = read_db_news_from_date(db_path_news, date_min_gmt)
+#
+#     if len(df_news) > 0:
+#         # Формируем имя файла
+#         file_name = f"current.md"
+#         file_path = md_news_dir / file_name
+#
+#         # Сохраняем новости с метаданными next_bar: current, date_max: current
+#         save_titles_to_markdown(df_news, file_path, "current", date_min_gmt, "current")
 
 
 def main(path_db_quote: Path, path_db_news: Path, md_news_dir: Path) -> None:
@@ -101,7 +102,7 @@ def main(path_db_quote: Path, path_db_news: Path, md_news_dir: Path) -> None:
     df['TRADEDATE'] = df['TRADEDATE'].astype(str)
     df['bar'] = df.apply(lambda x: 'up' if (x['OPEN'] < x['CLOSE']) else 'down', axis=1)
     df['next_bar'] = df['bar'].shift(-1)
-    df.dropna(inplace=True)
+    # df.dropna(inplace=True)
 
     for i in range(len(df) - 1, 0, -1):
         row1 = df.iloc[i]
@@ -120,13 +121,13 @@ def main(path_db_quote: Path, path_db_news: Path, md_news_dir: Path) -> None:
 
         save_titles_to_markdown(df_news, Path(fr'{md_news_dir}/{file_name}'), row1['next_bar'], date_min_gmt, date_max_gmt)
 
-    # Вызываем функцию для создания файла с последними новостями
-    save_latest_titles_to_markdown(path_db_news, path_db_quote, md_news_dir)
+    # # Вызываем функцию для создания файла с последними новостями
+    # save_latest_titles_to_markdown(path_db_news, path_db_quote, md_news_dir)
 
 
 if __name__ == '__main__':
     ticker = 'RTS'
-    path_db_quote = Path(fr'C:\Users\Alkor\gd\data_quote_db\{ticker}_futeres_day_2025_21-00.db')
+    path_db_quote = Path(fr'C:\Users\Alkor\gd\data_quote_db\{ticker}_futures_day_2025_21-00.db')
     path_db_news = Path(fr'C:\Users\Alkor\gd\data_beget_rss\rss_news_investing.db')
     md_news_dir = Path('c:/Users/Alkor/gd/news_rss_md_rts_21-00')
 

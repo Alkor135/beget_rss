@@ -1,3 +1,7 @@
+"""
+Отображает таблицы Futures из базы данных котировок RTS и MIX в виде DataFrame.
+"""
+
 import pandas as pd
 from pathlib import Path
 import sqlite3

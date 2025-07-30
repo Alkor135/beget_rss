@@ -143,7 +143,7 @@ if __name__ == '__main__':
     )
     # Путь к файлу БД с дневными котировками
     path_db_day: Path = Path(
-        rf'C:\Users\Alkor\gd\data_quote_db\{ticker}_futeres_day_2025_21-00.db'
+        rf'C:\Users\Alkor\gd\data_quote_db\{ticker}_futures_day_2025_21-00.db'
     )
 
     main(path_db_minutes, path_db_day)
