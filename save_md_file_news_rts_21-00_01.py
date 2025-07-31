@@ -39,18 +39,6 @@ def read_db_news(db_path_news: Path, date_max: str, date_min: str) -> pd.DataFra
         return pd.read_sql_query(query, conn, params=(date_min, date_max))
 
 
-# def read_db_news_from_date(db_path_news: Path, date_min: str) -> pd.DataFrame:
-#     """
-#     Читает новости из базы данных начиная с указанной даты без верхней границы.
-#     """
-#     with sqlite3.connect(db_path_news) as conn:
-#         query = """
-#             SELECT * FROM news
-#             WHERE date > ?
-#         """
-#         return pd.read_sql_query(query, conn, params=(date_min,))
-
-
 def save_titles_to_markdown(df_news: pd.DataFrame, file_path: Path, next_bar: str, date_min: str, date_max: str) -> None:
     """
     Сохраняет заголовки новостей в markdown-файл с метаданными.
@@ -63,58 +51,22 @@ def save_titles_to_markdown(df_news: pd.DataFrame, file_path: Path, next_bar: st
             file.write(f"- {title}\n")  # Записываем только заголовок в файл
 
 
-# def save_latest_titles_to_markdown(db_path_news: Path, db_path_quote: Path,
-#                                    md_news_dir: Path) -> None:
-#     """
-#     Создает markdown-файл с заголовками новостей начиная с максимальной даты в базе котировок
-#     с 21:00 МСК и метаданными next_bar: current, date_max: current.
-#     """
-#     # Получаем максимальную дату из базы котировок
-#     df_quote = read_db_quote(db_path_quote)
-#     df_quote['TRADEDATE'] = pd.to_datetime(df_quote['TRADEDATE'])
-#     max_date = df_quote['TRADEDATE'].max()
-#     max_date_str = max_date.strftime("%Y-%m-%d")
-#     print(f'{max_date_str=}')
-#
-#     # Формируем начальную дату
-#     date_min = f"{max_date_str} 21:00:00"
-#     date_min_gmt = msk_to_gmt(date_min)
-#
-#     # Читаем новости начиная с date_min_gmt
-#     df_news = read_db_news_from_date(db_path_news, date_min_gmt)
-#
-#     if len(df_news) > 0:
-#         # Формируем имя файла
-#         file_name = f"current.md"
-#         file_path = md_news_dir / file_name
-#
-#         # Сохраняем новости с метаданными next_bar: current, date_max: current
-#         save_titles_to_markdown(df_news, file_path, "current", date_min_gmt, "current")
-
-
 def main(path_db_quote: Path, path_db_news: Path, md_news_dir: Path) -> None:
     """
-    Основная функция: читает котировки и новости, удаляет старые markdown-файлы,
-    формирует и сохраняет не более 30 markdown-файлов с новостями и метаданными за самые последние даты.
+    Основная функция: читает котировки и новости, формирует и сохраняет не более 30 markdown-файлов
+    с новостями и метаданными за самые последние даты.
     """
-    # Удаляем все старые markdown-файлы в директории
-    for old_file in md_news_dir.glob("*.md"):
-        old_file.unlink()
-
-    # Читаем базу данных котировок и формируем DataFrame
     df = read_db_quote(path_db_quote)
     df['TRADEDATE'] = pd.to_datetime(df['TRADEDATE'])
-    df.sort_values(by='TRADEDATE', inplace=True)
-    # print(df)
-    df = df.tail(31)  # Ограничиваем до 31 строки, чтобы получить 30 интервалов
+    df.sort_values(by='TRADEDATE', ascending=False, inplace=True)  # Сортировка по убыванию даты
+    df = df.head(31)  # Ограничиваем до 31 строк, чтобы получить 30 интервалов
     df['TRADEDATE'] = df['TRADEDATE'].astype(str)
     df['bar'] = df.apply(lambda x: 'up' if (x['OPEN'] < x['CLOSE']) else 'down', axis=1)
     df['next_bar'] = df['bar'].shift(-1)
-    # df.dropna(inplace=True)
 
-    for i in range(len(df) - 1, 0, -1):
+    for i in range(len(df) - 1):
         row1 = df.iloc[i]
-        row2 = df.iloc[i - 1]
+        row2 = df.iloc[i + 1]  # Используем i + 1 из-за сортировки по убыванию
 
         file_name = f"{row1['TRADEDATE']}.md"
         date_max = f"{row1['TRADEDATE']} 21:00:00"
@@ -125,12 +77,9 @@ def main(path_db_quote: Path, path_db_news: Path, md_news_dir: Path) -> None:
         print(f"{file_name}. Новости за период: {date_min} - {date_max}")
         df_news = read_db_news(path_db_news, date_max_gmt, date_min_gmt)
         if len(df_news) == 0:
-            break
+            continue  # Пропускаем, если нет новостей, но не прерываем цикл
 
-        save_titles_to_markdown(df_news, Path(fr'{md_news_dir}/{file_name}'), row1['next_bar'], date_min_gmt, date_max_gmt)
-
-    # # Вызываем функцию для создания файла с последними новостями
-    # save_latest_titles_to_markdown(path_db_news, path_db_quote, md_news_dir)
+        save_titles_to_markdown(df_news, Path(md_news_dir / file_name), row1['next_bar'], date_min_gmt, date_max_gmt)
 
 
 if __name__ == '__main__':

@@ -156,7 +156,7 @@ def remove_duplicates_from_db(db_path: str) -> None:
         with sqlite3.connect(db_path) as conn:
             conn.isolation_level = None
             conn.execute("VACUUM")
-            logging.info("VACUUM выполнен: база данных оптимизирована.")
+            logging.info("VACUUM выполнен: база данных оптимизирована.\n")
     except Exception as e:
         logging.error(f"Ошибка при выполнении VACUUM: {e}")
 

@@ -251,6 +251,7 @@ if __name__ == '__main__':
     # Настройка базы данных
     ticker: str = 'RTS'
     path_db: Path = Path(rf'C:\Users\Alkor\gd\data_quote_db\{ticker}_futures_minute_2025.db')  # Путь к файлу БД
+    # path_db = Path(fr'/home/user/rss_scraper/db_data/{ticker}_futures_minute_2025.db')
     # Начальная дата для загрузки данных
     start_date: date = datetime.strptime('2025-06-02', "%Y-%m-%d").date()
 

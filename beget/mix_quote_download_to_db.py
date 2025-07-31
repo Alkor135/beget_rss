@@ -142,7 +142,7 @@ def get_future_date_results(
                     'SETTLEPRICEDAY', 'NUMTRADES', 'SHORTNAME', 'CHANGE', 'QTY'
                 ], axis=1)
                 logging.info(f"Данные для {tradedate}: {df.to_string(max_rows=5, max_cols=20)}")
-                logging.info('Строка записана в БД\n')
+                logging.info('Строка записана в БД')
             else:
                 logging.warning(f"Данные для {tradedate} не соответствуют условиям записи")
         tradedate += timedelta(days=1)
@@ -194,7 +194,7 @@ def main(ticker, path_db, start_date):
         # Закрываем курсор и соединение
         cursor.close()
         connection.close()
-        logging.info("Соединение с базой данных закрыто.")
+        logging.info("Соединение с базой данных закрыто.\n")
 
 if __name__ == '__main__':
     ticker = 'MIX'
