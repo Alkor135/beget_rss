@@ -1,5 +1,8 @@
 """
 Скрипт для скачивания файлов с сервера Beget по SSH с использованием библиотеки Paramiko.
+Этот скрипт подключается к серверу по SSH, скачивает необходимые файлы и сохраняет их в локальные директории.
+Логи процесса скачивания сохраняются в отдельный файл с ротацией по времени (каждый день).
+Используется библиотека Paramiko для работы с SSH и SFTP.
 """
 
 import paramiko
@@ -11,10 +14,12 @@ from logging.handlers import TimedRotatingFileHandler
 # Создание папки для логов перед настройкой логирования
 log_dir = Path('C:\\Users\\Alkor\\gd\\data_beget_rss\\log')
 log_dir.mkdir(parents=True, exist_ok=True)
+# Определение файла логов
+log_file = Path('C:\\Users\\Alkor\\gd\\data_beget_rss\\log\\download_log.log')
 
 # Настройка логирования с ротацией по времени
 log_handler = TimedRotatingFileHandler(
-    'C:\\Users\\Alkor\\gd\\data_beget_rss\\log\\download_log.log',
+    log_file,
     when='midnight',  # Новый файл каждый день в полночь
     interval=1,
     backupCount=7,    # Хранить логи за 7 дней
@@ -37,6 +42,12 @@ def download_files():
         local_log_dir = Path('C:\\Users\\Alkor\\gd\\data_beget_rss\\log')  # Для логов
         local_db_dir.mkdir(parents=True, exist_ok=True)
         local_log_dir.mkdir(parents=True, exist_ok=True)
+
+        # Удаляем все файлы в local_db_dir и всех её вложенных папках, кроме download_log.log
+        for old_file in local_db_dir.rglob("*"):
+            if old_file.is_file() and old_file != log_file:  # Проверяем, что это файл и не download_log.log
+                logging.info(f'Удаление файла: {old_file}')
+                old_file.unlink()
 
         # Файлы для скачивания с сервера
         remote_files = [

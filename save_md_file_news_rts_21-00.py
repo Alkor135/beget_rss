@@ -1,5 +1,7 @@
 """
-Скрипт для чтения базы данных котировок и новостей, формирования markdown-файлов с заголовками новостей
+Скрипт для чтения базы данных котировок и новостей, формирования markdown-файлов с заголовками новостей.
+Сохраняет не более 30 последних интервалов в формате markdown с метаданными.
+Использует базу данных котировок с дневными свечами, сформированными из минутных данных с 21:00 МСК.
 """
 
 import pandas as pd
@@ -62,7 +64,8 @@ def main(path_db_quote: Path, path_db_news: Path, md_news_dir: Path) -> None:
     """
     # Удаляем все старые markdown-файлы в директории
     for old_file in md_news_dir.glob("*.md"):
-        old_file.unlink()
+        if old_file.is_file():  # Проверяем, что это файл, а не папка
+            old_file.unlink()
 
     # Читаем базу данных котировок и формируем DataFrame
     df = read_db_quote(path_db_quote)
@@ -94,10 +97,6 @@ def main(path_db_quote: Path, path_db_news: Path, md_news_dir: Path) -> None:
             df_news, Path(fr'{md_news_dir}/{file_name}'),
             row1['next_bar'], date_min_gmt, date_max_gmt
         )
-
-    # # Вызываем функцию для создания файла с последними новостями
-    # save_latest_titles_to_markdown(path_db_news, path_db_quote, md_news_dir)
-
 
 if __name__ == '__main__':
     ticker = 'RTS'
