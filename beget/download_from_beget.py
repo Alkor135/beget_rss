@@ -52,11 +52,15 @@ def download_files():
         # Файлы для скачивания с сервера
         remote_files = [
             ('/home/user/rss_scraper/db_data/rss_news_investing.db', local_db_dir),
-            ('/home/user/rss_scraper/db_data/RTS_day_rss_2025.db', local_db_dir),
-            ('/home/user/rss_scraper/db_data/MIX_day_rss_2025.db', local_db_dir),
+            ('/home/user/rss_scraper/db_data/rss_news_investing_2025_06.db', local_db_dir),
+            ('/home/user/rss_scraper/db_data/rss_news_investing_2025_07.db', local_db_dir),
+            ('/home/user/rss_scraper/db_data/rss_news_investing_2025_08.db', local_db_dir),
+            # ('/home/user/rss_scraper/db_data/RTS_day_rss_2025.db', local_db_dir),
+            # ('/home/user/rss_scraper/db_data/MIX_day_rss_2025.db', local_db_dir),
             ('/home/user/rss_scraper/log/rss_scraper.log', local_log_dir),
-            ('/home/user/rss_scraper/log/rts_quote_download_to_db.log', local_log_dir),
-            ('/home/user/rss_scraper/log/mix_quote_download_to_db.log', local_log_dir)
+            ('/home/user/rss_scraper/log/rss_scraper_month.log', local_log_dir)
+            # ('/home/user/rss_scraper/log/rts_quote_download_to_db.log', local_log_dir),
+            # ('/home/user/rss_scraper/log/mix_quote_download_to_db.log', local_log_dir)
         ]
 
         # Настройка SSH-клиента
@@ -84,5 +88,5 @@ def download_files():
         logging.error(f"Ошибка при скачивании: {e}")
 
 if __name__ == '__main__':
-    logging.info(f"Запуск процесса скачивания: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    logging.info(f"\nЗапуск процесса скачивания: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     download_files()

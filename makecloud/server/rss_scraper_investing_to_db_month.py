@@ -16,10 +16,10 @@ from logging.handlers import TimedRotatingFileHandler
 
 # Настройка логирования с ротацией по времени
 log_handler = TimedRotatingFileHandler(
-    '/home/ubuntu/rss_scraper/log/rss_scraper.log',
+    '/home/ubuntu/rss_scraper/log/rss_scraper_month.log',
     when='midnight',  # Новый файл каждый день в полночь
     interval=1,
-    backupCount=7  # Хранить логи за 7 дней
+    backupCount=3  # Хранить логи за 7 дней
 )
 log_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 logging.getLogger('').setLevel(logging.INFO)
