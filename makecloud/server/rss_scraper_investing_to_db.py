@@ -1,7 +1,6 @@
 """
 RSS Scraper for Investing.com News
 """
-
 import asyncio
 import aiohttp
 import requests
@@ -16,7 +15,7 @@ from logging.handlers import TimedRotatingFileHandler
 
 # Настройка логирования с ротацией по времени
 log_handler = TimedRotatingFileHandler(
-    '/home/ubuntu/rss_scraper/log/rss_scraper_month.log',
+    '/home/ubuntu/rss_scraper/log/rss_scraper.log',
     when='midnight',  # Новый файл каждый день в полночь
     interval=1,
     backupCount=3  # Хранить логи за 3 дней
@@ -55,8 +54,7 @@ async def async_parsing_news(rss_links: list[str]) -> pd.DataFrame:
     """
     Асинхронно парсит все RSS-ленты и возвращает DataFrame.
     """
-    timeout = aiohttp.ClientTimeout(total=40)  # Устанавливаем таймаут в 40 секунд
-    async with aiohttp.ClientSession(timeout=timeout) as session:
+    async with aiohttp.ClientSession() as session:
         tasks = [fetch_rss(session, link) for link in rss_links]
         results = await asyncio.gather(*tasks)
     all_news = [item for sublist in results for item in sublist]
@@ -69,7 +67,7 @@ def get_links(url: str) -> list[str]:
     Получение ссылок на новостные RSS.
     """
     try:
-        response = requests.get(url, timeout=30)
+        response = requests.get(url)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, 'html.parser')
         news_section = soup.find('h2', string='Новости')
@@ -101,27 +99,14 @@ def parsing_news(rss_links: list[str]) -> pd.DataFrame:
     """
     return asyncio.run(async_parsing_news(rss_links))
 
-def get_db_path(base_dir: str, date: datetime) -> str:
+def save_to_sqlite(df: pd.DataFrame, db_path: str) -> None:
     """
-    Формирует путь к файлу базы данных на основе текущего года и месяца.
-    """
-    year_month = date.strftime("%Y_%m")
-    return os.path.join(base_dir, f"rss_news_investing_{year_month}.db")
-
-
-def save_to_sqlite(df: pd.DataFrame, base_dir: str) -> None:
-    """
-    Сохраняет DataFrame в SQLite базу данных для текущего месяца.
+    Сохраняет DataFrame c RSS-лентой новостей в SQLite базу данных.
     """
     if df.empty:
         logging.error("DataFrame пустой, нечего сохранять в БД.")
         return
-
-    # Определяем текущий месяц
-    current_date = datetime.now()
-    db_path = get_db_path(base_dir, current_date)
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
-
     with sqlite3.connect(db_path) as conn:
         try:
             conn.execute("""
@@ -132,18 +117,15 @@ def save_to_sqlite(df: pd.DataFrame, base_dir: str) -> None:
             """)
             conn.execute("CREATE INDEX IF NOT EXISTS idx_news_date_title ON news(date, title)")
             df[["date", "title"]].to_sql('news', conn, if_exists='append', index=False)
-            logging.info(f"Новости сохранены в базе данных {db_path}. Сохранено строк: {len(df)}")
+            logging.info(f"Новости сохранены в базе данных. Сохранено строк: {len(df)}")
         except Exception as e:
-            logging.error(f"Ошибка при сохранении в БД {db_path}: {e}")
+            logging.error(f"Ошибка при сохранении в БД: {e}")
 
-
-def remove_duplicates_from_db(base_dir: str) -> None:
+def remove_duplicates_from_db(db_path: str) -> None:
     """
-    Удаляет дубликаты из таблицы news текущего месяца по дате (без времени) и title.
+    Удаляет дубликаты из таблицы news по дате (без времени) и title, оставляя одну запись.
+    Выводит количество удалённых строк и выполняет VACUUM.
     """
-    current_date = datetime.now()
-    db_path = get_db_path(base_dir, current_date)
-
     try:
         with sqlite3.connect(db_path) as conn:
             cursor = conn.execute("SELECT COUNT(*) FROM news")
@@ -166,20 +148,21 @@ def remove_duplicates_from_db(base_dir: str) -> None:
             cursor = conn.execute("SELECT COUNT(*) FROM news")
             after_count = cursor.fetchone()[0]
             deleted_count = before_count - after_count
-            logging.info(
-                f"Дубликаты в базе данных {db_path} удалены. Удалено строк: {deleted_count}")
+            logging.info(f"Дубликаты в базе данных удалены. Удалено строк: {deleted_count}")
+    except Exception as e:
+        logging.error(f"Ошибка при удалении дубликатов из БД: {e}")
 
-            # Выполняем VACUUM для текущей базы
+    try:
+        with sqlite3.connect(db_path) as conn:
             conn.isolation_level = None
             conn.execute("VACUUM")
-            logging.info(f"VACUUM выполнен для {db_path}: база данных оптимизирована.")
+            logging.info("VACUUM выполнен: база данных оптимизирована.")
     except Exception as e:
-        logging.error(f"Ошибка при обработке базы данных {db_path}: {e}")
+        logging.error(f"Ошибка при выполнении VACUUM: {e}")
 
-
-def main(url: str, base_dir: str) -> None:
+def main(url: str, db_path: str) -> None:
     """
-    Основная функция для парсинга RSS и сохранения в БД текущего месяца.
+    Основная функция для парсинга RSS и сохранения в БД.
     """
     try:
         logging.info(f"\nЗапуск сбора данных: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
@@ -189,14 +172,13 @@ def main(url: str, base_dir: str) -> None:
             return
         logging.info('Ссылки на RSS ленты получены')
         df = parsing_news(rss_links)
-        df = df.sort_values(by='date')  # Сортировка по date
-        save_to_sqlite(df, base_dir)
-        remove_duplicates_from_db(base_dir)
+        df = df.sort_values(by='date')  # Сортировка по date в ascending order
+        save_to_sqlite(df, db_path)
+        remove_duplicates_from_db(db_path)
     except Exception as e:
         logging.error(f"Ошибка в main: {e}")
 
-
 if __name__ == '__main__':
     URL = "https://ru.investing.com/webmaster-tools/rss"
-    BASE_DIR = "/home/ubuntu/rss_scraper/db_data"
-    main(URL, BASE_DIR)
+    DB_PATH = "/home/ubuntu/rss_scraper/db_data/rss_news_investing.db"
+    main(URL, DB_PATH)

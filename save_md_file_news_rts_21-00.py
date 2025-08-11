@@ -57,7 +57,7 @@ def save_titles_to_markdown(
             title = row['title']
             file.write(f"- {title}\n")  # Записываем только заголовок в файл
 
-def main(path_db_quote: Path, path_db_news: Path, md_news_dir: Path) -> None:
+def main(path_db_quote: Path, path_db_news: Path, md_news_dir: Path, number_of_files: int) -> None:
     """
     Основная функция: читает котировки и новости, удаляет старые markdown-файлы,
     формирует и сохраняет не более 30 markdown-файлов с новостями и метаданными за самые последние даты.
@@ -72,7 +72,7 @@ def main(path_db_quote: Path, path_db_news: Path, md_news_dir: Path) -> None:
     df['TRADEDATE'] = pd.to_datetime(df['TRADEDATE'])
     df.sort_values(by='TRADEDATE', inplace=True)
     # print(df)
-    df = df.tail(31)  # Ограничиваем до 31 строки, чтобы получить 30 интервалов
+    df = df.tail(number_of_files + 1)  # Ограничиваем до 31 строки, чтобы получить 30 интервалов
     df['TRADEDATE'] = df['TRADEDATE'].astype(str)
     df['bar'] = df.apply(lambda x: 'up' if (x['OPEN'] < x['CLOSE']) else 'down', axis=1)
     df['next_bar'] = df['bar'].shift(-1)
@@ -103,6 +103,7 @@ if __name__ == '__main__':
     path_db_quote = Path(fr'C:\Users\Alkor\gd\data_quote_db\{ticker}_futures_day_2025_21-00.db')
     path_db_news = Path(fr'C:\Users\Alkor\gd\data_beget_rss\rss_news_investing.db')
     md_news_dir = Path('c:/Users/Alkor/gd/news_rss_md_rts_21-00')
+    number_of_files = 30  # Максимальное количество сохраняемых markdown-файлов
 
     # Создаем директорию для сохранения markdown-файлов, если она не существует
     (Path(md_news_dir)).mkdir(parents=True, exist_ok=True)
@@ -115,4 +116,4 @@ if __name__ == '__main__':
         print("Ошибка: Файл базы данных новостей не найден.")
         exit()
 
-    main(path_db_quote, path_db_news, md_news_dir)
+    main(path_db_quote, path_db_news, md_news_dir, number_of_files)

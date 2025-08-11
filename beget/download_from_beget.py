@@ -22,7 +22,7 @@ log_handler = TimedRotatingFileHandler(
     log_file,
     when='midnight',  # Новый файл каждый день в полночь
     interval=1,
-    backupCount=7,    # Хранить логи за 7 дней
+    backupCount=3,    # Хранить логи за 3 дней
     encoding='utf-8'  # Указываем кодировку UTF-8
 )
 log_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
