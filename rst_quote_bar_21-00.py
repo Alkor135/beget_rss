@@ -38,6 +38,6 @@ if __name__ == '__main__':
 
     # print(df_rts.to_string(max_rows=30, max_cols=15))
 
-    print(df_rts.tail(30).to_string(max_rows=30, max_cols=15))
+    print(df_rts.tail(10).to_string(max_rows=30, max_cols=15))
 
     # print(df_rts)
