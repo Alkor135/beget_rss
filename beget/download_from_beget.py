@@ -10,6 +10,7 @@ from pathlib import Path
 import logging
 from datetime import datetime
 from logging.handlers import TimedRotatingFileHandler
+from pytz import timezone
 
 # Создание папки для логов перед настройкой логирования
 log_dir = Path('C:\\Users\\Alkor\\gd\\data_beget_rss\\log')
@@ -25,7 +26,13 @@ log_handler = TimedRotatingFileHandler(
     backupCount=3,    # Хранить логи за 3 дней
     encoding='utf-8'  # Указываем кодировку UTF-8
 )
-log_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+# log_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+log_handler.setFormatter(logging.Formatter(
+    fmt='%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+    style='%'
+))
+log_handler.converter = lambda *args: datetime.now(timezone('Europe/Moscow')).timetuple()
 logging.getLogger('').setLevel(logging.INFO)
 logging.getLogger('').addHandler(log_handler)
 
