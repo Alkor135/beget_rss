@@ -212,5 +212,6 @@ def main(url: str, base_dir: str) -> None:
 
 if __name__ == '__main__':
     URL = "https://ru.investing.com/webmaster-tools/rss"
-    BASE_DIR = "/home/user/rss_scraper/db_data_investing"
+    # BASE_DIR = "/home/user/rss_scraper/db_data_investing"
+    BASE_DIR = "/home/user/rss_scraper/db_rss_investing"
     main(URL, BASE_DIR)
