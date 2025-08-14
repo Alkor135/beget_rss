@@ -21,5 +21,12 @@ wsl rsync -avz --include="rss_scraper_investing_month*.log" --exclude="*" root@1
 "[$timestamp] Sync .db files" | Out-File -FilePath C:\Users\Alkor\gd\db_rss_interfax\log\sync.log -Encoding UTF8
 wsl rsync -avz --include="*/" --include="**/*.db" --exclude="*" root@109.172.46.10:/home/user/rss_scraper/db_rss_interfax/ /mnt/c/Users/Alkor/gd/db_rss_interfax/ | ForEach-Object { "[$timestamp] $_" } | Out-File -FilePath C:\Users\Alkor\gd\db_rss_interfax\log\sync.log -Append -Encoding UTF8
 # Выполняем синхронизацию .log файлов interfax
-"[$timestamp] Sync .log files" | Out-File -FilePath C:\Users\Alkor\gd\db_rss_investing\log\sync.log -Append -Encoding UTF8
+"[$timestamp] Sync .log files" | Out-File -FilePath C:\Users\Alkor\gd\db_rss_interfax\log\sync.log -Append -Encoding UTF8
 wsl rsync -avz --include="rss_scraper_interfax_month*.log" --exclude="*" root@109.172.46.10:/home/user/rss_scraper/log/ /mnt/c/Users/Alkor/gd/db_rss_interfax/log/ | ForEach-Object { "[$timestamp] $_" } | Out-File -FilePath C:\Users\Alkor\gd\db_rss_interfax\log\sync.log -Append -Encoding UTF8
+
+# Выполняем синхронизацию .db файлов prime
+"[$timestamp] Sync .db files" | Out-File -FilePath C:\Users\Alkor\gd\db_rss_prime\log\sync.log -Encoding UTF8
+wsl rsync -avz --include="*/" --include="**/*.db" --exclude="*" root@109.172.46.10:/home/user/rss_scraper/db_rss_prime/ /mnt/c/Users/Alkor/gd/db_rss_prime/ | ForEach-Object { "[$timestamp] $_" } | Out-File -FilePath C:\Users\Alkor\gd\db_rss_prime\log\sync.log -Append -Encoding UTF8
+# Выполняем синхронизацию .log файлов prime
+"[$timestamp] Sync .log files" | Out-File -FilePath C:\Users\Alkor\gd\db_rss_prime\log\sync.log -Append -Encoding UTF8
+wsl rsync -avz --include="rss_scraper_prime_month*.log" --exclude="*" root@109.172.46.10:/home/user/rss_scraper/log/ /mnt/c/Users/Alkor/gd/db_rss_prime/log/ | ForEach-Object { "[$timestamp] $_" } | Out-File -FilePath C:\Users\Alkor\gd\db_rss_prime\log\sync.log -Append -Encoding UTF8
