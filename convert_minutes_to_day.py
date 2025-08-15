@@ -100,7 +100,7 @@ def main(db_path_minutes: Path, path_db_day: Path) -> None:
         dates: list = get_sorted_dates(connection_minutes, cursor_minutes, db_path_minutes)
         print(f"Найдено дат: {dates}")
 
-        # Удаляем старую базу данных, если она существует
+        # Удаляем старую базу данных с дневными барами с 21:00 предыдущей сессии (если она существует)
         if path_db_day.exists():
             try:
                 path_db_day.unlink()
@@ -137,11 +137,11 @@ def main(db_path_minutes: Path, path_db_day: Path) -> None:
 
 if __name__ == '__main__':
     ticker = 'RTS'
-    # Путь к файлу БД c минутными котировками
+    # Путь к файлу БД c минутными котировками скаченных с MOEX ISS
     path_db_minutes: Path = Path(
         rf'C:\Users\Alkor\gd\data_quote_db\{ticker}_futures_minute_2025.db'
     )
-    # Путь к файлу БД с дневными котировками
+    # Путь к файлу БД с дневными котировками (с 21:00 предыдущей сессии)
     path_db_day: Path = Path(
         rf'C:\Users\Alkor\gd\data_quote_db\{ticker}_futures_day_2025_21-00.db'
     )
