@@ -17,9 +17,12 @@ def prepare(path_db_quote: Path) -> pd.DataFrame:
     df = df.sort_values('TRADEDATE', ascending=True)
     # print(df)
 
+    # Добавление столбца с направлением следующей свечи
     df['next_bar'] = df.apply(
         lambda x: 'up' if (x['OPEN'] < x['CLOSE']) else 'down', axis=1
     ).shift(-1)
+
+    # Добавление столбца с финансовым результатом за день. Up - положительный, Down - отрицательный
     df['next_bar_pips'] = df.apply(
         lambda x: (x['CLOSE'] - x['OPEN']), axis=1
     ).shift(-1)
