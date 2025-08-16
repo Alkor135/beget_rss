@@ -1,5 +1,7 @@
 """
-Конвертирует минутные котировки в дневные с заданным временем начала и конца дневной свечи.
+Конвертирует котировки, минутные бары фьючерса в дневные с заданным временем начала и конца дневной свечи.
+Дневная свеча формируется с 21:00:00 предыдущей сессии до 20:59:59 текущей сессии по МСК.
+При обнаружении нескольких контрактов в диапазоне (rollover), корректирует цены старого контракта на разницу (gap) для обеспечения непрерывности.
 """
 
 import sqlite3
@@ -16,7 +18,9 @@ def create_tables(connection: sqlite3.Connection) -> None:
                     OPEN REAL NOT NULL,
                     LOW REAL NOT NULL,
                     HIGH REAL NOT NULL,
-                    CLOSE REAL NOT NULL
+                    CLOSE REAL NOT NULL,
+                    SECID TEXT NOT NULL,
+                    LSTTRADE TEXT NOT NULL
                 )
             ''')
             connection.commit()
@@ -34,6 +38,7 @@ def get_sorted_dates(connection, cursor, db_path: Path) -> list:
 def get_daily_candle(cursor, start: str, end: str) -> tuple:
     """
     Получает дневную свечку из минутных данных за указанный диапазон времени.
+    Если в диапазоне несколько контрактов (rollover), корректирует цены старого контракта на gap.
 
     Args:
         cursor: Курсор SQLite для выполнения запросов.
@@ -41,31 +46,155 @@ def get_daily_candle(cursor, start: str, end: str) -> tuple:
         end: Конец периода в формате 'YYYY-MM-DD HH:MM:SS'.
 
     Returns:
-        tuple: (TRADEDATE, OPEN, LOW, HIGH, CLOSE) или None, если данных нет.
+        tuple: (TRADEDATE, OPEN, LOW, HIGH, CLOSE, SECID, LSTTRADE) или None, если данных нет.
     """
     # Извлекаем дату из end для TRADEDATE
     trade_date = datetime.strptime(end, "%Y-%m-%d %H:%M:%S").strftime("%Y-%m-%d")
 
-    # Запрос для получения OPEN, LOW, HIGH, CLOSE
-    query = """
-        SELECT 
-            (SELECT OPEN FROM Futures WHERE TRADEDATE = (
-                SELECT MIN(TRADEDATE) FROM Futures WHERE TRADEDATE BETWEEN ? AND ?
-            ) LIMIT 1) AS OPEN,
-            MIN(LOW) AS LOW,
-            MAX(HIGH) AS HIGH,
-            (SELECT CLOSE FROM Futures WHERE TRADEDATE = (
-                SELECT MAX(TRADEDATE) FROM Futures WHERE TRADEDATE BETWEEN ? AND ?
-            ) LIMIT 1) AS CLOSE
-        FROM Futures
-        WHERE TRADEDATE BETWEEN ? AND ?
+    # Проверяем количество уникальных SECID в диапазоне
+    query_count = """
+        SELECT COUNT(DISTINCT SECID) FROM Futures WHERE TRADEDATE BETWEEN ? AND ?
     """
-    cursor.execute(query, (start, end, start, end, start, end))
-    result = cursor.fetchone()
+    cursor.execute(query_count, (start, end))
+    num_secid = cursor.fetchone()[0]
 
-    if result and result[0] is not None and result[1] is not None and result[2] is not None and result[3] is not None:
-        return (trade_date, result[0], result[1], result[2], result[3])
-    return None
+    if num_secid == 0:
+        return None
+
+    # Получаем SECID, LSTTRADE из последнего бара
+    query_last = """
+        SELECT SECID, LSTTRADE, CLOSE FROM Futures WHERE TRADEDATE = (
+            SELECT MAX(TRADEDATE) FROM Futures WHERE TRADEDATE BETWEEN ? AND ?
+        ) LIMIT 1
+    """
+    cursor.execute(query_last, (start, end))
+    last_result = cursor.fetchone()
+    if not last_result:
+        return None
+    secid, lsttrade, close = last_result
+
+    if num_secid == 1:
+        # Обычный случай: один контракт
+        query = """
+            SELECT 
+                (SELECT OPEN FROM Futures WHERE TRADEDATE = (
+                    SELECT MIN(TRADEDATE) FROM Futures WHERE TRADEDATE BETWEEN ? AND ?
+                ) LIMIT 1) AS OPEN,
+                MIN(LOW) AS LOW,
+                MAX(HIGH) AS HIGH
+            FROM Futures
+            WHERE TRADEDATE BETWEEN ? AND ?
+        """
+        cursor.execute(query, (start, end, start, end))
+        result = cursor.fetchone()
+        if result and all(result[i] is not None for i in range(3)):
+            return (trade_date, result[0], result[1], result[2], close, secid, lsttrade)
+        return None
+
+    else:
+        # Rollover: несколько контрактов, предполагаем два (старый и новый)
+        # Находим начало нового контракта (min TRADEDATE где SECID = last_secid)
+        query_new_start = """
+            SELECT MIN(TRADEDATE) FROM Futures 
+            WHERE SECID = ? AND TRADEDATE BETWEEN ? AND ?
+        """
+        cursor.execute(query_new_start, (secid, start, end))
+        new_start = cursor.fetchone()[0]
+        if not new_start:
+            return None
+
+        # Последний бар старого контракта (max TRADEDATE < new_start)
+        query_old_end = """
+            SELECT MAX(TRADEDATE) FROM Futures 
+            WHERE TRADEDATE < ? AND TRADEDATE BETWEEN ? AND ?
+        """
+        cursor.execute(query_old_end, (new_start, start, end))
+        old_end = cursor.fetchone()[0]
+        if not old_end:
+            # Нет старой части, обрабатываем как один контракт (только новый)
+            query_new = """
+                SELECT 
+                    (SELECT OPEN FROM Futures WHERE TRADEDATE = ? LIMIT 1) AS OPEN,
+                    MIN(LOW) AS LOW,
+                    MAX(HIGH) AS HIGH
+                FROM Futures
+                WHERE TRADEDATE >= ? AND TRADEDATE <= ?
+            """
+            cursor.execute(query_new, (new_start, new_start, end))
+            result_new = cursor.fetchone()
+            if result_new and all(result_new[i] is not None for i in range(3)):
+                return (trade_date, result_new[0], result_new[1], result_new[2], close, secid, lsttrade)
+            return None
+
+        # Получаем last_close_old
+        query_close_old = """
+            SELECT CLOSE FROM Futures WHERE TRADEDATE = ? LIMIT 1
+        """
+        cursor.execute(query_close_old, (old_end,))
+        last_close_old = cursor.fetchone()[0]
+
+        # Получаем first_open_new
+        query_open_new = """
+            SELECT OPEN FROM Futures WHERE TRADEDATE = ? LIMIT 1
+        """
+        cursor.execute(query_open_new, (new_start,))
+        first_open_new = cursor.fetchone()[0]
+
+        # Вычисляем gap
+        gap = first_open_new - last_close_old
+
+        # Данные для старой части (с корректировкой)
+        query_old = """
+            SELECT 
+                (SELECT OPEN FROM Futures WHERE TRADEDATE = (
+                    SELECT MIN(TRADEDATE) FROM Futures WHERE TRADEDATE BETWEEN ? AND ?
+                ) LIMIT 1) + ? AS ADJ_OPEN,
+                MIN(LOW) + ? AS ADJ_LOW,
+                MAX(HIGH) + ? AS ADJ_HIGH
+            FROM Futures
+            WHERE TRADEDATE BETWEEN ? AND ?
+        """
+        old_start = start
+        old_end_str = old_end  # Уже строка
+        cursor.execute(query_old, (old_start, old_end_str, gap, gap, gap, old_start, old_end_str))
+        result_old = cursor.fetchone()
+        if not result_old or any(result_old[i] is None for i in range(3)):
+            # Если нет старой части или данных, обрабатываем только новую
+            query_new_only = """
+                SELECT 
+                    (SELECT OPEN FROM Futures WHERE TRADEDATE = ? LIMIT 1) AS OPEN,
+                    MIN(LOW) AS LOW,
+                    MAX(HIGH) AS HIGH
+                FROM Futures
+                WHERE TRADEDATE >= ? AND TRADEDATE <= ?
+            """
+            cursor.execute(query_new_only, (new_start, new_start, end))
+            result_new_only = cursor.fetchone()
+            if result_new_only and all(result_new_only[i] is not None for i in range(3)):
+                return (trade_date, result_new_only[0], result_new_only[1], result_new_only[2], close, secid, lsttrade)
+            return None
+
+        adj_open, adj_low_old, adj_high_old = result_old
+
+        # Данные для новой части
+        query_new = """
+            SELECT 
+                MIN(LOW) AS LOW,
+                MAX(HIGH) AS HIGH
+            FROM Futures
+            WHERE TRADEDATE BETWEEN ? AND ?
+        """
+        cursor.execute(query_new, (new_start, end))
+        result_new = cursor.fetchone()
+        if not result_new or any(result_new[i] is None for i in range(2)):
+            return None
+        low_new, high_new = result_new
+
+        # Аггрегируем
+        overall_low = min(adj_low_old, low_new)
+        overall_high = max(adj_high_old, high_new)
+
+        return (trade_date, adj_open, overall_low, overall_high, close, secid, lsttrade)
 
 def save_daily_candle(connection: sqlite3.Connection, cursor, candle: tuple) -> None:
     """
@@ -74,12 +203,12 @@ def save_daily_candle(connection: sqlite3.Connection, cursor, candle: tuple) -> 
     Args:
         connection: Соединение с базой данных.
         cursor: Курсор SQLite для выполнения запросов.
-        candle: Кортеж (TRADEDATE, OPEN, LOW, HIGH, CLOSE).
+        candle: Кортеж (TRADEDATE, OPEN, LOW, HIGH, CLOSE, SECID, LSTTRADE).
     """
     if candle:
         query = """
-            INSERT INTO Futures (TRADEDATE, OPEN, LOW, HIGH, CLOSE)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO Futures (TRADEDATE, OPEN, LOW, HIGH, CLOSE, SECID, LSTTRADE)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
         """
         with connection:
             try:
@@ -116,7 +245,7 @@ def main(db_path_minutes: Path, path_db_day: Path) -> None:
         # Обрабатываем каждую пару дат для формирования дневных свечек
         for e, s in zip(dates, dates[1:] + ['1970-01-01']):
             start = f"{s} 21:00:00"
-            end = f"{e} 20:59:00"
+            end = f"{e} 20:59:59"
 
             # Получаем дневную свечку из минутных данных
             candle = get_daily_candle(cursor_minutes, start, end)
