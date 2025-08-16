@@ -1,6 +1,6 @@
 """
 Скрипт для чтения базы данных котировок и новостей из нескольких файлов БД, формирования markdown-файлов с заголовками новостей.
-Сохраняет не более 30 последних интервалов в формате markdown с метаданными.
+Сохраняет не более указанных последних интервалов в формате markdown с метаданными.
 Использует базу данных котировок с дневными свечами, сформированными из минутных данных с 21:00 МСК.
 Обрабатывает последние три файла БД новостей (по месяцам).
 """
@@ -8,18 +8,6 @@
 import pandas as pd
 from pathlib import Path
 import sqlite3
-from datetime import datetime
-from zoneinfo import ZoneInfo
-
-
-# def msk_to_gmt(dt_str: str) -> str:
-#     """
-#     Преобразует строку даты-времени из МСК в GMT (ISO-формат).
-#     """
-#     dt = datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
-#     dt = dt.replace(tzinfo=ZoneInfo("Europe/Moscow"))
-#     dt_gmt = dt.astimezone(ZoneInfo("Etc/GMT"))
-#     return dt_gmt.strftime("%Y-%m-%d %H:%M:%S")
 
 
 def read_db_quote(db_path_quote: Path) -> pd.DataFrame:
@@ -100,10 +88,13 @@ def get_latest_db_files(directory: Path, num_files: int = 3) -> list[Path]:
     return [f[0] for f in files[:num_files]]
 
 
-def main(path_db_quote: Path, db_news_dir: Path, md_news_dir: Path, num_dbs: int = 3) -> None:
+def main(
+        path_db_quote: Path, db_news_dir: Path, md_news_dir: Path,
+        num_mds: int = 30, num_dbs: int = 3
+) -> None:
     """
     Основная функция: читает котировки и новости из последних num_dbs файлов БД,
-    удаляет старые markdown-файлы, формирует и сохраняет не более 30 markdown-файлов
+    удаляет старые markdown-файлы, формирует и сохраняет не более num_mds markdown-файлов
     с новостями и метаданными за самые последние даты.
     """
     # Получаем последние файлы БД новостей
@@ -122,7 +113,7 @@ def main(path_db_quote: Path, db_news_dir: Path, md_news_dir: Path, num_dbs: int
     df = read_db_quote(path_db_quote)
     df['TRADEDATE'] = pd.to_datetime(df['TRADEDATE'])
     df.sort_values(by='TRADEDATE', inplace=True)
-    df = df.tail(31)  # Ограничиваем до 31 строки, чтобы получить 30 интервалов
+    df = df.tail(num_mds + 1)  # Ограничиваем до num_mds+1 строки, чтобы получить num_mds интервалов
     df['TRADEDATE'] = df['TRADEDATE'].astype(str)
     df['bar'] = df.apply(lambda x: 'up' if (x['OPEN'] < x['CLOSE']) else 'down', axis=1)
     df['next_bar'] = df['bar'].shift(-1)
@@ -134,29 +125,28 @@ def main(path_db_quote: Path, db_news_dir: Path, md_news_dir: Path, num_dbs: int
         file_name = f"{row1['TRADEDATE']}.md"
         date_max = f"{row1['TRADEDATE']} 20:59:59"
         date_min = f"{row2['TRADEDATE']} 21:00:00"
-        # date_max_gmt = msk_to_gmt(date_max)
-        # date_min_gmt = msk_to_gmt(date_min)
 
         print(f"{file_name}. Новости за период: {date_min} - {date_max}")
-        # df_news = read_db_news_multiple(db_paths, date_max_gmt, date_min_gmt)
         df_news = read_db_news_multiple(db_paths, date_max, date_min)
         if len(df_news) == 0:
             break
 
         save_titles_to_markdown(
             df_news, Path(fr'{md_news_dir}/{file_name}'),
-            # row1['next_bar'], date_min_gmt, date_max_gmt
             row1['next_bar'], date_min, date_max
         )
 
 
 if __name__ == '__main__':
     ticker = 'RTS'
+    rss_provider = 'investing'  # Поставщик новостей
     path_db_quote = Path(fr'C:\Users\Alkor\gd\data_quote_db\{ticker}_futures_day_2025_21-00.db')
-    # db_news_dir = Path(fr'C:\Users\Alkor\gd\data_beget_rss')  # Директория с файлами БД новостей
-    db_news_dir = Path(fr'C:\Users\Alkor\gd\db_rss_investing')  # Директория с файлами БД новостей
-    # md_news_dir = Path('c:/Users/Alkor/gd/news_rss_md_rts_21-00_month')
-    md_news_dir = Path('c:/Users/Alkor/gd/md_rss_investing')
+    # Директория с файлами БД новостей по месяцам
+    db_news_dir = Path(fr'C:\Users\Alkor\gd\db_rss_{rss_provider}')
+    # Директория для сохранения markdown-файлов с новостями с 21:00 МСК предыдущей торговой сессии
+    md_news_dir = Path(fr'c:/Users/Alkor/gd/md_rss_{rss_provider}')
+    num_mds = 30  # Количество последних интервалов для сохранения в markdown файлы
+    num_dbs = 3  # Количество последних файлов БД новостей для обработки
 
     # Создаем директорию для сохранения markdown-файлов, если она не существует
     (Path(md_news_dir)).mkdir(parents=True, exist_ok=True)
@@ -171,4 +161,4 @@ if __name__ == '__main__':
         print("Ошибка: Файлы баз данных новостей не найдены.")
         exit()
 
-    main(path_db_quote, db_news_dir, md_news_dir)
+    main(path_db_quote, db_news_dir, md_news_dir, num_mds=num_mds, num_dbs=num_dbs)
