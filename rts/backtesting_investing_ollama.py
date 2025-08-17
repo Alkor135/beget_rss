@@ -3,7 +3,7 @@
 Кэширует эмбеддинги в pickle-файл для избежания повторного создания ChromaDB.
 Проверяет актуальность кэша при изменении или добавлении markdown-файлов.
 Ограничивает количество предыдущих файлов для предсказаний параметром max_prev_files.
-Добавляет финансовый результат в пунктах (pips) и накопительный результат (cumulative_pips).
+Добавляет финансовый результат в пунктах (next_bar_pips) и накопительный результат (cumulative_next_bar_pips).
 """
 
 import pandas as pd
@@ -18,11 +18,11 @@ from chromadb.utils.embedding_functions import OllamaEmbeddingFunction
 
 # Параметры
 md_path = Path(r'C:\Users\Alkor\gd\md_rss_investing')
-cache_file = Path(r'embeddings_cache.pkl')
+cache_file = Path(r'embeddings_investing_ollama.pkl')
 path_db_quote = Path(r'C:\Users\Alkor\gd\data_quote_db\RTS_futures_day_2025_21-00.db')
 model_name = "bge-m3"
 url_ai = "http://localhost:11434/api/embeddings"
-min_prev_files = 5   # Минимальное количество предыдущих файлов для предсказаний
+min_prev_files = 4   # Минимальное количество предыдущих файлов для предсказаний
 max_prev_files = 30  # Максимальное количество предыдущих файлов для предсказаний
 
 def cosine_similarity(vec1, vec2):
@@ -61,12 +61,18 @@ def load_markdown_files(directory):
     return documents
 
 def load_quotes(path_db_quote):
-    """Читает таблицу Futures из базы данных котировок и возвращает DataFrame с pips."""
+    """Читает таблицу Futures из базы данных котировок и возвращает DataFrame с next_bar_pips."""
     with sqlite3.connect(path_db_quote) as conn:
         df = pd.read_sql_query("SELECT TRADEDATE, OPEN, CLOSE FROM Futures", conn)
+    df = df.sort_values('TRADEDATE', ascending=True)
     df['TRADEDATE'] = df['TRADEDATE'].astype(str)
-    df['pips'] = df['CLOSE'] - df['OPEN']
-    return df[['TRADEDATE', 'pips']].set_index('TRADEDATE')
+    # Вычисляем финансовый результат за следующий день
+    df['next_bar_pips'] = df.apply(
+        lambda x: (x['CLOSE'] - x['OPEN']), axis=1
+    ).shift(-1)
+    # Удаляем строки с NaN в next_bar_pips, если нужно
+    df = df.dropna(subset=['next_bar_pips'])
+    return df[['TRADEDATE', 'next_bar_pips']].set_index('TRADEDATE')
 
 def cache_is_valid(documents, cache_file):
     """Проверяет, актуален ли кэш эмбеддингов."""
@@ -170,10 +176,10 @@ def backtest_predictions(documents, cache, quotes_df):
             predicted_next_bar = closest_metadata['next_bar']
             is_correct = predicted_next_bar == real_next_bar
 
-            # Получение pips из базы котировок
+            # Получение next_bar_pips из базы котировок
             try:
-                pips_value = quotes_df.loc[test_date, 'pips']
-                pips = abs(pips_value) if is_correct else -abs(pips_value)
+                next_bar_pips_value = quotes_df.loc[test_date, 'next_bar_pips']
+                next_bar_pips = abs(next_bar_pips_value) if is_correct else -abs(next_bar_pips_value)
             except KeyError:
                 print(f"Данные котировок для даты {test_date} не найдены.")
                 continue
@@ -184,7 +190,7 @@ def backtest_predictions(documents, cache, quotes_df):
                 'real_next_bar': real_next_bar,
                 'similarity': closest_similarity,
                 'is_correct': is_correct,
-                'pips': pips
+                'next_bar_pips': next_bar_pips
             })
 
             total_predictions += 1
@@ -192,12 +198,12 @@ def backtest_predictions(documents, cache, quotes_df):
                 correct_predictions += 1
 
             print(f"Дата: {test_date}, Предсказание: {predicted_next_bar}, Реальное: {real_next_bar}, "
-                  f"Сходство: {closest_similarity:.2f}%, Правильно: {is_correct}, Pips: {pips}")
+                  f"Сходство: {closest_similarity:.2f}%, Правильно: {is_correct}, next_bar_pips: {next_bar_pips}")
 
     # Создание DataFrame и добавление накопительного результата
     results_df = pd.DataFrame(results)
     if not results_df.empty:
-        results_df['cumulative_pips'] = results_df['pips'].cumsum()
+        results_df['cumulative_next_bar_pips'] = results_df['next_bar_pips'].cumsum()
     else:
         print("Нет результатов для сохранения.")
 
@@ -206,12 +212,12 @@ def backtest_predictions(documents, cache, quotes_df):
         accuracy = (correct_predictions / total_predictions) * 100
         print(f"\nОбщая точность: {accuracy:.2f}% ({correct_predictions}/{total_predictions})")
         if not results_df.empty:
-            print(f"Итоговый накопительный результат: {results_df['cumulative_pips'].iloc[-1]:.2f} пунктов")
+            print(f"Итоговый накопительный результат: {results_df['cumulative_next_bar_pips'].iloc[-1]:.2f} пунктов")
     else:
         print("Нет предсказаний для оценки.")
 
     # Сохранение результатов в CSV
-    results_df.to_csv('backtest_results.csv', index=False)
+    results_df.to_csv('backtest_investing_ollama.csv', index=False)
     print("Результаты сохранены в backtest_results.csv")
 
 if __name__ == '__main__':
