@@ -13,4 +13,4 @@
 1. `rts_download_minutes_to_db.py` - скачает минутные данные с MOEX ISS API
 2. `rts_21_00_convert_minutes_to_days.py` - преобразует минутные данные в дневные свечи с интервалом 1 день с 21:00 предыдущей сессии до 21:00 текущей сессии.
 3. [rts_21_00_db_investing_month_to_md.py](rts_21_00_db_investing_month_to_md.py) - выставить 30 файлов `markdown`.
-4. [rts_predict_next_session.py](predict_next_session_investing_ollama.py) - предсказанием будет считаться направление `Next_bar` ближайшего похожего по векторам `markdown` файла, который был создан в предыдущем шаге.
+4. [rts_predict_next_session.py](old/predict_next_session_investing_ollama.py) - предсказанием будет считаться направление `Next_bar` ближайшего похожего по векторам `markdown` файла, который был создан в предыдущем шаге.

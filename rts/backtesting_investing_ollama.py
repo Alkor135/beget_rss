@@ -4,6 +4,7 @@
 Проверяет актуальность кэша при изменении или добавлении markdown-файлов.
 Ограничивает количество предыдущих файлов для предсказаний параметром max_prev_files.
 Добавляет финансовый результат в пунктах (next_bar_pips) и накопительный результат (cumulative_next_bar_pips).
+Сохраняет результаты в CSV и XLSX файлы.
 """
 
 import pandas as pd
@@ -23,7 +24,7 @@ path_db_quote = Path(r'C:\Users\Alkor\gd\data_quote_db\RTS_futures_day_2025_21-0
 model_name = "bge-m3"
 url_ai = "http://localhost:11434/api/embeddings"
 min_prev_files = 4   # Минимальное количество предыдущих файлов для предсказаний
-max_prev_files = 30  # Максимальное количество предыдущих файлов для предсказаний
+max_prev_files = 11  # Максимальное количество предыдущих файлов для предсказаний
 
 def cosine_similarity(vec1, vec2):
     """Вычисляет косинусное сходство между двумя векторами."""
@@ -216,9 +217,13 @@ def backtest_predictions(documents, cache, quotes_df):
     else:
         print("Нет предсказаний для оценки.")
 
-    # Сохранение результатов в CSV
-    results_df.to_csv('backtest_investing_ollama.csv', index=False)
-    print("Результаты сохранены в backtest_results.csv")
+    # Сохранение результатов в CSV и XLSX
+    if not results_df.empty:
+        results_df.to_csv('backtest_results_investing_ollama.csv', index=False)
+        results_df.to_excel('backtest_results_investing_ollama.xlsx', index=False, engine='openpyxl')
+        print("Результаты сохранены в backtest_results_investing_ollama.csv и backtest_results_investing_ollama.xlsx")
+    else:
+        print("Нет результатов для сохранения в файлы.")
 
 if __name__ == '__main__':
     # Загрузка котировок

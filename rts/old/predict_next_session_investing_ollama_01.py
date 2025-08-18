@@ -3,9 +3,9 @@
 Кэширует эмбеддинги в pickle-файл, проверяет актуальность кэша.
 Ограничивает количество предыдущих файлов параметрами min_prev_files и max_prev_files.
 Предсказывает направление для документа с next_bar='None'.
-Все выводы print сохраняются в текстовый файл в папке predict_ollama с именем {none_date}.txt.
 """
 
+# import pandas as pd
 from pathlib import Path
 import pickle
 import hashlib
@@ -13,17 +13,14 @@ import numpy as np
 import yaml
 from langchain_core.documents import Document
 from chromadb.utils.embedding_functions import OllamaEmbeddingFunction
-from contextlib import redirect_stdout
 
 # Параметры
 md_path = Path(r'C:\Users\Alkor\gd\md_rss_investing')
-cache_file = Path(r'embeddings_investing_ollama.pkl')
+cache_file = Path(r'../embeddings_investing_ollama.pkl')
 model_name = "bge-m3"
 url_ai = "http://localhost:11434/api/embeddings"
 min_prev_files = 4   # Минимальное количество предыдущих файлов для предсказания
 max_prev_files = 11  # Максимальное количество предыдущих файлов для предсказания
-# Папка для сохранения текстовых файлов
-output_dir = Path(r'C:\Users\Alkor\gd\predict_ai\rts_investing_ollama')
 
 def cosine_similarity(vec1, vec2):
     """Вычисляет косинусное сходство между двумя векторами."""
@@ -137,9 +134,6 @@ def cache_embeddings(documents, cache_file, model_name, url_ai):
 
 def predict_next_bar(documents, cache):
     """Предсказывает направление next_bar для документа с next_bar='None'."""
-    # Создание папки для вывода, если она не существует
-    output_dir.mkdir(parents=True, exist_ok=True)
-
     # Поиск документа с next_bar="None"
     none_doc = None
     for doc in documents:
@@ -152,58 +146,51 @@ def predict_next_bar(documents, cache):
         return
 
     none_date = none_doc.metadata['date']
-    output_file = output_dir / f"{none_date}.txt"
+    print(f"\nПредсказание для даты {none_date} (next_bar='None'):")
 
-    # Перенаправление вывода в файл
-    with open(output_file, 'w', encoding='utf-8') as f:
-        with redirect_stdout(f):
-            print(f"\nПредсказание для даты {none_date} (next_bar='None'):")
+    # Получение эмбеддинга документа с next_bar="None"
+    none_id = hashlib.md5(none_doc.page_content.encode()).hexdigest()
+    none_embedding = None
+    for item in cache:
+        if item['id'] == none_id:
+            none_embedding = item['embedding']
+            break
+    if none_embedding is None:
+        print(f"Эмбеддинг для даты {none_date} не найден в кэше.")
+        return
 
-            # Получение эмбеддинга документа с next_bar="None"
-            none_id = hashlib.md5(none_doc.page_content.encode()).hexdigest()
-            none_embedding = None
-            for item in cache:
-                if item['id'] == none_id:
-                    none_embedding = item['embedding']
-                    break
-            if none_embedding is None:
-                print(f"Эмбеддинг для даты {none_date} не найден в кэше.")
-                return
+    # Получение предыдущих документов из кэша, ближайших по дате
+    prev_cache = sorted(
+        [item for item in cache if item['metadata']['next_bar'] != "None" and item['metadata']['date'] < none_date],
+        key=lambda x: x['metadata']['date'], reverse=True
+    )[:max_prev_files]  # Ограничиваем max_prev_files ближайшими датами
 
-            # Получение предыдущих документов из кэша, ближайших по дате
-            prev_cache = sorted(
-                [item for item in cache if item['metadata']['next_bar'] != "None" and item['metadata']['date'] < none_date],
-                key=lambda x: x['metadata']['date'], reverse=True
-            )[:max_prev_files]  # Ограничиваем max_prev_files ближайшими датами
+    if len(prev_cache) < min_prev_files:
+        print(f"Недостаточно предыдущих документов для даты {none_date}: {len(prev_cache)}")
+        return
 
-            if len(prev_cache) < min_prev_files:
-                print(f"Недостаточно предыдущих документов для даты {none_date}: {len(prev_cache)}")
-                return
+    # Вычисление сходств
+    similarities = [
+        (cosine_similarity(none_embedding, item['embedding']) * 100, item['metadata'])
+        for item in prev_cache
+    ]
 
-            # Вычисление сходств
-            similarities = [
-                (cosine_similarity(none_embedding, item['embedding']) * 100, item['metadata'])
-                for item in prev_cache
-            ]
+    # Сортировка по убыванию сходства
+    similarities.sort(key=lambda x: x[0], reverse=True)
 
-            # Сортировка по убыванию сходства
-            similarities.sort(key=lambda x: x[0], reverse=True)
+    # Ближайший документ
+    if similarities:
+        closest_similarity, closest_metadata = similarities[0]
+        predicted_next_bar = closest_metadata['next_bar']
 
-            # Ближайший документ
-            if similarities:
-                closest_similarity, closest_metadata = similarities[0]
-                predicted_next_bar = closest_metadata['next_bar']
-
-                print(f"\nПредсказание для даты {none_date}:")
-                print(f"Предсказанное направление: {predicted_next_bar}")
-                print(f"Процент сходства: {closest_similarity:.2f}%")
-                print("Метаданные ближайшего документа:")
-                for key in sorted(closest_metadata.keys()):
-                    print(f"  {key}: {closest_metadata[key]}")
-            else:
-                print("Нет похожих документов для предсказания.")
-
-    print(f"Результаты сохранены в {output_file}")
+        print(f"\nПредсказание для даты {none_date}:")
+        print(f"Предсказанное направление: {predicted_next_bar}")
+        print(f"Процент сходства: {closest_similarity:.2f}%")
+        print("Метаданные ближайшего документа:")
+        for key in sorted(closest_metadata.keys()):
+            print(f"  {key}: {closest_metadata[key]}")
+    else:
+        print("Нет похожих документов для предсказания.")
 
 if __name__ == '__main__':
     # Загрузка markdown-файлов
