@@ -23,7 +23,7 @@ url_ai = "http://localhost:11434/api/embeddings"
 min_prev_files = 4   # Минимальное количество предыдущих файлов для предсказания
 max_prev_files = 30  # Максимальное количество предыдущих файлов для предсказания
 # Папка для сохранения текстовых файлов
-output_dir = Path(r'C:\Users\Alkor\gd\predict_ai\rts_investing_ollama')
+output_dir = Path(r'C:\Users\Alkor\gd\predict_ai\mix_investing_ollama')
 
 def cosine_similarity(vec1, vec2):
     """Вычисляет косинусное сходство между двумя векторами."""

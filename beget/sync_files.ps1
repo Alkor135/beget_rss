@@ -1,4 +1,4 @@
-# C:\Users\Alkor\PycharmProjects\beget_rss\beget\sync_files.ps1
+# C:\Users\Alkor\PycharmProjects\beget_rss\beget\sync_files_01.ps1
 
 # Скрипт для синхронизации файлов .db и .log с удалённого сервера на локальную машину
 # Используется WSL и rsync для синхронизации данных
