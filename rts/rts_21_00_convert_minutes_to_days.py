@@ -1,12 +1,22 @@
 """
 Конвертирует котировки, минутные бары фьючерса в дневные с заданным временем начала и конца дневной свечи.
 Дневная свеча формируется с 21:00:00 предыдущей сессии до 20:59:59 текущей сессии по МСК.
-При обнаружении нескольких контрактов в диапазоне (rollover), корректирует цены старого контракта на разницу (gap) для обеспечения непрерывности.
+При обнаружении нескольких контрактов в диапазоне (rollover), корректирует цены старого контракта
+на разницу (gap) для обеспечения непрерывности.
 """
 
 import sqlite3
 from pathlib import Path
 from datetime import datetime
+
+
+# Параметры
+ticker = 'RTS'
+# Путь к файлу БД с минутными котировками скаченными с MOEX ISS
+path_db_minutes: Path = Path(rf'C:\Users\Alkor\gd\data_quote_db\{ticker}_futures_minute_2025.db')
+# Путь к файлу БД с дневными котировками (с 21:00 предыдущей сессии)
+path_db_day: Path = Path(rf'C:\Users\Alkor\gd\data_quote_db\{ticker}_futures_day_2025_21-00.db')
+
 
 def create_tables(connection: sqlite3.Connection) -> None:
     """Функция создания таблицы в БД, если её нет"""
@@ -265,14 +275,4 @@ def main(db_path_minutes: Path, path_db_day: Path) -> None:
         print(f"Ошибка при работе с базой данных: {e}")
 
 if __name__ == '__main__':
-    ticker = 'RTS'
-    # Путь к файлу БД c минутными котировками скаченных с MOEX ISS
-    path_db_minutes: Path = Path(
-        rf'C:\Users\Alkor\gd\data_quote_db\{ticker}_futures_minute_2025.db'
-    )
-    # Путь к файлу БД с дневными котировками (с 21:00 предыдущей сессии)
-    path_db_day: Path = Path(
-        rf'C:\Users\Alkor\gd\data_quote_db\{ticker}_futures_day_2025_21-00.db'
-    )
-
     main(path_db_minutes, path_db_day)

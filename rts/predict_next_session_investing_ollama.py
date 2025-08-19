@@ -21,7 +21,7 @@ cache_file = Path(r'embeddings_investing_ollama.pkl')
 model_name = "bge-m3"
 url_ai = "http://localhost:11434/api/embeddings"
 min_prev_files = 4   # Минимальное количество предыдущих файлов для предсказания
-max_prev_files = 30  # Максимальное количество предыдущих файлов для предсказания
+max_prev_files = 11  # Максимальное количество предыдущих файлов для предсказания
 # Папка для сохранения текстовых файлов
 output_dir = Path(r'C:\Users\Alkor\gd\predict_ai\rts_investing_ollama')
 
@@ -157,7 +157,7 @@ def predict_next_bar(documents, cache):
     # Перенаправление вывода в файл
     with open(output_file, 'w', encoding='utf-8') as f:
         with redirect_stdout(f):
-            print(f"\nПредсказание для даты {none_date} (next_bar='None'):")
+            print(f"\nПредсказание для даты {none_date} (next_bar='None'), {max_prev_files=}:")
 
             # Получение эмбеддинга документа с next_bar="None"
             none_id = hashlib.md5(none_doc.page_content.encode()).hexdigest()
