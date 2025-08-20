@@ -18,6 +18,7 @@ wsl rsync -avz --include="rss_scraper_investing_month*.log" --exclude="*" root@1
 
 # Выполняем синхронизацию .db файлов interfax
 # Проверяем, существует ли директория для логов, и создаём её, если отсутствует
+$timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
 $logDir = "C:\Users\Alkor\gd\db_rss_interfax\log"
 if (-not (Test-Path -Path $logDir)) {New-Item -Path $logDir -ItemType Directory -Force}
 "[$timestamp] Sync .db files" | Out-File -FilePath C:\Users\Alkor\gd\db_rss_interfax\log\sync.log -Encoding UTF8
@@ -28,6 +29,7 @@ wsl rsync -avz --include="rss_scraper_interfax_month*.log" --exclude="*" root@10
 
 # Выполняем синхронизацию .db файлов prime
 # Проверяем, существует ли директория для логов, и создаём её, если отсутствует
+$timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
 $logDir = "C:\Users\Alkor\gd\db_rss_prime\log"
 if (-not (Test-Path -Path $logDir)) {New-Item -Path $logDir -ItemType Directory -Force}
 "[$timestamp] Sync .db files" | Out-File -FilePath C:\Users\Alkor\gd\db_rss_prime\log\sync.log -Encoding UTF8

@@ -17,7 +17,7 @@ from contextlib import redirect_stdout
 
 # Параметры
 md_path = Path(r'C:\Users\Alkor\gd\md_rss_investing')
-cache_file = Path(r'embeddings_investing_ollama.pkl')
+cache_file = Path(r'C:\Users\Alkor\PycharmProjects\beget_rss\rts\embeddings_investing_ollama.pkl')
 model_name = "bge-m3"
 url_ai = "http://localhost:11434/api/embeddings"
 min_prev_files = 4   # Минимальное количество предыдущих файлов для предсказания

@@ -19,7 +19,7 @@ from chromadb.utils.embedding_functions import OllamaEmbeddingFunction
 
 # Параметры
 md_path = Path(r'C:\Users\Alkor\gd\md_rss_investing')
-cache_file = Path(r'embeddings_investing_ollama.pkl')
+cache_file = Path(r'C:\Users\Alkor\PycharmProjects\beget_rss\rts\embeddings_investing_ollama.pkl')
 path_db_quote = Path(r'C:\Users\Alkor\gd\data_quote_db\RTS_futures_day_2025_21-00.db')
 model_name = "bge-m3"
 url_ai = "http://localhost:11434/api/embeddings"

@@ -9,6 +9,14 @@ import requests
 import pandas as pd
 
 
+# Параметры
+ticker: str = 'RTS'  # Тикер фьючерса
+# Путь к базе данных с минутными барами фьючерсов
+path_db: Path = Path(rf'C:\Users\Alkor\gd\data_quote_db\{ticker}_futures_minute_2025.db')
+# Начальная дата для загрузки данных
+start_date: date = datetime.strptime('2025-06-02', "%Y-%m-%d").date()
+
+
 def request_moex(session, url, retries = 3, timeout = 5):
     """Функция запроса данных с повторными попытками"""
     for attempt in range(retries):
@@ -248,11 +256,4 @@ def main(ticker: str, path_db: Path, start_date: date) -> None:
 
 
 if __name__ == '__main__':
-    # Настройка базы данных
-    ticker: str = 'RTS'  # Тикер фьючерса
-    # Путь к базе данных с минутными барами фьючерсов
-    path_db: Path = Path(rf'C:\Users\Alkor\gd\data_quote_db\{ticker}_futures_minute_2025.db')
-    # Начальная дата для загрузки данных
-    start_date: date = datetime.strptime('2025-06-02', "%Y-%m-%d").date()
-
     main(ticker, path_db, start_date)
