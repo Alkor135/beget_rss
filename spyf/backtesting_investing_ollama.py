@@ -18,8 +18,8 @@ from langchain_core.documents import Document
 from chromadb.utils.embedding_functions import OllamaEmbeddingFunction
 
 # Параметры
-ticker = 'RTS'
-ticker_lc = 'rts'
+ticker = 'SPYF'
+ticker_lc = 'spyf'
 md_path = Path(fr'C:\Users\Alkor\gd\md_{ticker_lc}_investing')
 cache_file = Path(fr'C:\Users\Alkor\PycharmProjects\beget_rss\{ticker_lc}\embeddings_investing_ollama.pkl')
 path_db_quote = Path(fr'C:\Users\Alkor\gd\data_quote_db\{ticker}_futures_day_2025_21-00.db')
