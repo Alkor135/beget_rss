@@ -16,14 +16,15 @@ from chromadb.utils.embedding_functions import OllamaEmbeddingFunction
 from contextlib import redirect_stdout
 
 # Параметры
-md_path = Path(r'C:\Users\Alkor\gd\md_rss_investing')
-cache_file = Path(r'embeddings_investing_ollama.pkl')
+ticker_lc = 'mix'
+md_path = Path(fr'C:\Users\Alkor\gd\md_{ticker_lc}_investing')
+cache_file = Path(fr'C:\Users\Alkor\PycharmProjects\beget_rss\{ticker_lc}\embeddings_investing_ollama.pkl')
 model_name = "bge-m3"
 url_ai = "http://localhost:11434/api/embeddings"
 min_prev_files = 4   # Минимальное количество предыдущих файлов для предсказания
-max_prev_files = 30  # Максимальное количество предыдущих файлов для предсказания
+max_prev_files = 11  # Максимальное количество предыдущих файлов для предсказания
 # Папка для сохранения текстовых файлов
-output_dir = Path(r'C:\Users\Alkor\gd\predict_ai\mix_investing_ollama')
+output_dir = Path(fr'C:\Users\Alkor\gd\predict_ai\{ticker_lc}_investing_ollama')
 
 def cosine_similarity(vec1, vec2):
     """Вычисляет косинусное сходство между двумя векторами."""
@@ -157,7 +158,7 @@ def predict_next_bar(documents, cache):
     # Перенаправление вывода в файл
     with open(output_file, 'w', encoding='utf-8') as f:
         with redirect_stdout(f):
-            print(f"\nПредсказание для даты {none_date} (next_bar='None'):")
+            print(f"\nПредсказание для даты {none_date} (next_bar='None'), {max_prev_files=}:")
 
             # Получение эмбеддинга документа с next_bar="None"
             none_id = hashlib.md5(none_doc.page_content.encode()).hexdigest()

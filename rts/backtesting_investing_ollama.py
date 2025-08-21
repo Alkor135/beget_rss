@@ -18,9 +18,11 @@ from langchain_core.documents import Document
 from chromadb.utils.embedding_functions import OllamaEmbeddingFunction
 
 # Параметры
-md_path = Path(r'C:\Users\Alkor\gd\md_rss_investing')
-cache_file = Path(r'C:\Users\Alkor\PycharmProjects\beget_rss\rts\embeddings_investing_ollama.pkl')
-path_db_quote = Path(r'C:\Users\Alkor\gd\data_quote_db\RTS_futures_day_2025_21-00.db')
+ticker = 'RTS'
+ticker_lc = 'rts'
+md_path = Path(fr'C:\Users\Alkor\gd\md_{ticker_lc}_investing')
+cache_file = Path(fr'C:\Users\Alkor\PycharmProjects\beget_rss\{ticker_lc}\embeddings_investing_ollama.pkl')
+path_db_quote = Path(fr'C:\Users\Alkor\gd\data_quote_db\{ticker}_futures_day_2025_21-00.db')
 model_name = "bge-m3"
 url_ai = "http://localhost:11434/api/embeddings"
 min_prev_files = 4   # Минимальное количество предыдущих файлов для предсказаний

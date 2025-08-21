@@ -1,8 +1,10 @@
 """
 Скрипт для чтения базы данных котировок и новостей из нескольких файлов БД, формирования markdown-файлов с заголовками новостей.
 Сохраняет не более указанных последних интервалов в формате markdown с метаданными.
-Использует базу данных котировок с дневными свечами, сформированными из минутных данных с 21:00 МСК.
-Обрабатывает последние три файла БД новостей (по месяцам).
+Использует базу данных котировок с дневными свечами, сформированными из минутных данных с 21:00 МСК предыдущей сессии.
+Обрабатывает последние два файла БД новостей (по месяцам).
+Удаляет только самый последний markdown-файл по дате перед генерацией.
+Не перезаписывает существующие markdown-файлы.
 """
 
 import pandas as pd
@@ -10,9 +12,25 @@ from pathlib import Path
 import sqlite3
 
 
+# Параметры
+ticker: str = 'MIX'
+ticker_lc = 'mix'
+rss_provider: str = 'investing'  # Поставщик новостей
+# Директория с БД дневных свечей с 21:00 предыдущей сессии до 21:00 даты свечи.
+path_db_quote = Path(fr'C:/Users/Alkor/gd/data_quote_db/{ticker}_futures_day_2025_21-00.db')
+# Директория с файлами БД новостей по месяцам
+db_news_dir = Path(fr'C:/Users/Alkor/gd/db_rss_{rss_provider}')
+# Директория для сохранения markdown-файлов с новостями с 21:00 МСК предыдущей торговой сессии
+md_news_dir = Path(fr'c:/Users/Alkor/gd/md_{ticker_lc}_{rss_provider}')
+num_mds: int = 20  # Количество последних интервалов для сохранения в markdown файлы
+num_dbs: int = 2  # Количество последних файлов БД новостей для обработки
+time_start = '21:00:00'  # Время с которого начинается поиск новостей за предыдущую сессию в БД
+time_end = '20:59:59'  # Время, которым заканчивается поиск новостей за текущую сессию в БД
+
+
 def read_db_quote(db_path_quote: Path) -> pd.DataFrame:
     """
-    Читает таблицу Futures из базы данных котировок и возвращает DataFrame.
+    Читает таблицу Futures из базы данных дневных котировок и возвращает DataFrame.
     """
     with sqlite3.connect(db_path_quote) as conn:
         return pd.read_sql_query("SELECT * FROM Futures", conn)
@@ -88,14 +106,25 @@ def get_latest_db_files(directory: Path, num_files: int = 3) -> list[Path]:
     return [f[0] for f in files[:num_files]]
 
 
+def delete_latest_md_file(md_news_dir: Path) -> None:
+    """
+    Удаляет самый последний markdown-файл по дате (имя файла) в директории.
+    """
+    md_files = sorted(md_news_dir.glob("*.md"), key=lambda f: f.stem, reverse=True)  # Сортировка по дате descending
+    if md_files:
+        latest_file = md_files[0]
+        latest_file.unlink()
+        print(f"Удалён самый последний markdown-файл: {latest_file}")
+
+
 def main(
         path_db_quote: Path, db_news_dir: Path, md_news_dir: Path,
         num_mds: int = 30, num_dbs: int = 3
 ) -> None:
     """
     Основная функция: читает котировки и новости из последних num_dbs файлов БД,
-    удаляет старые markdown-файлы, формирует и сохраняет не более num_mds markdown-файлов
-    с новостями и метаданными за самые последние даты.
+    удаляет самый последний markdown-файл, формирует и сохраняет не более num_mds markdown-файлов
+    с новостями и метаданными за самые последние даты, не перезаписывая существующие файлы.
     """
     # Получаем последние файлы БД новостей
     db_paths = get_latest_db_files(db_news_dir, num_files=num_dbs)
@@ -104,10 +133,8 @@ def main(
 
     print("Используемые файлы БД:", [str(p) for p in db_paths])
 
-    # Удаляем все старые markdown-файлы в директории
-    for old_file in md_news_dir.glob("*.md"):
-        if old_file.is_file():  # Проверяем, что это файл, а не папка
-            old_file.unlink()
+    # Удаляем только самый последний markdown-файл
+    delete_latest_md_file(md_news_dir)
 
     # Читаем базу данных котировок и формируем DataFrame
     df = read_db_quote(path_db_quote)
@@ -122,9 +149,14 @@ def main(
         row1 = df.iloc[i]
         row2 = df.iloc[i - 1]
 
-        file_name = f"{row1['TRADEDATE']}.md"
-        date_max = f"{row1['TRADEDATE']} 20:59:59"
-        date_min = f"{row2['TRADEDATE']} 21:00:00"
+        file_name = f"{row1['TRADEDATE']}.md"  # Формирование имени файла из даты
+        file_path = md_news_dir / file_name
+        date_min = f"{row2['TRADEDATE']} {time_start}"  # Дата и время старта поиска новостей в БД
+        date_max = f"{row1['TRADEDATE']} {time_end}"  # Дата и время окончания поиска новостей в БД
+
+        if file_path.exists():
+            print(f"Файл {file_name} уже существует, пропускаем.")
+            continue
 
         print(f"{file_name}. Новости за период: {date_min} - {date_max}")
         df_news = read_db_news_multiple(db_paths, date_max, date_min)
@@ -132,24 +164,16 @@ def main(
             break
 
         save_titles_to_markdown(
-            df_news, Path(fr'{md_news_dir}/{file_name}'),
+            df_news, file_path,
             row1['next_bar'], date_min, date_max
         )
 
 
 if __name__ == '__main__':
-    ticker = 'MIX'
-    rss_provider = 'investing'  # Поставщик новостей
-    path_db_quote = Path(fr'C:\Users\Alkor\gd\data_quote_db\{ticker}_futures_day_2025_21-00.db')
-    # Директория с файлами БД новостей по месяцам
-    db_news_dir = Path(fr'C:\Users\Alkor\gd\db_rss_{rss_provider}')
-    # Директория для сохранения markdown-файлов с новостями с 21:00 МСК предыдущей торговой сессии
-    md_news_dir = Path(fr'c:/Users/Alkor/gd/md_rss_{rss_provider}')
-    num_mds = 100  # Количество последних интервалов для сохранения в markdown файлы
-    num_dbs = 3  # Количество последних файлов БД новостей для обработки
+
 
     # Создаем директорию для сохранения markdown-файлов, если она не существует
-    (Path(md_news_dir)).mkdir(parents=True, exist_ok=True)
+    md_news_dir.mkdir(parents=True, exist_ok=True)
 
     if not path_db_quote.exists():
         print(f"Ошибка: Файл базы данных котировок не найден. {path_db_quote}")

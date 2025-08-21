@@ -13,12 +13,13 @@ from datetime import datetime
 
 
 # Параметры
-ticker = 'RTS'
+ticker: str = 'RTS'
 # Путь к файлу БД с минутными котировками скаченными с MOEX ISS API
 path_db_minutes: Path = Path(rf'C:\Users\Alkor\gd\data_quote_db\{ticker}_futures_minute_2025.db')
 # Путь к файлу БД с дневными котировками (с 21:00 предыдущей сессии)
 path_db_day: Path = Path(rf'C:\Users\Alkor\gd\data_quote_db\{ticker}_futures_day_2025_21-00.db')
-
+time_start = '21:00:00'  # Время старта поиска минутных баров в предыдущую сессию
+time_end = '20:59:59'  # Время окончания поиска минутных баров за текущую сессию
 
 def create_tables(connection: sqlite3.Connection) -> None:
     """Функция создания таблицы в БД, если её нет"""
@@ -278,9 +279,9 @@ def main(db_path_minutes: Path, path_db_day: Path) -> None:
         delete_latest_record(connection_day, cursor_day)
 
         # Обрабатываем каждую пару дат для формирования дневных свечек
-        for e, s in zip(dates, dates[1:] + ['1970-01-01']):
-            start = f"{s} 21:00:00"
-            end = f"{e} 20:59:59"
+        for date_end, date_start in zip(dates, dates[1:] + ['1970-01-01']):
+            start = f"{date_start} {time_start}"  # Дата и время начала дневной свечи.
+            end = f"{date_end} {time_end}"  # Дата и время конца дневной свечи.
 
             # Получаем дневную свечку из минутных данных
             candle = get_daily_candle(cursor_minutes, start, end)
@@ -296,8 +297,8 @@ def main(db_path_minutes: Path, path_db_day: Path) -> None:
         connection_day.close()
         print("Все соединения с базами данных закрыты.")
 
-    except sqlite3.Error as e:
-        print(f"Ошибка при работе с базой данных: {e}")
+    except sqlite3.Error as err:
+        print(f"Ошибка при работе с базой данных: {err}")
 
 if __name__ == '__main__':
     main(path_db_minutes, path_db_day)

@@ -13,16 +13,19 @@ import sqlite3
 
 
 # Параметры
-ticker = 'RTS'
-rss_provider = 'investing'  # Поставщик новостей
+ticker: str = 'RTS'
+ticker_lc = 'rts'
+rss_provider: str = 'investing'  # Поставщик новостей
 # Директория с БД дневных свечей с 21:00 предыдущей сессии до 21:00 даты свечи.
 path_db_quote = Path(fr'C:/Users/Alkor/gd/data_quote_db/{ticker}_futures_day_2025_21-00.db')
 # Директория с файлами БД новостей по месяцам
 db_news_dir = Path(fr'C:/Users/Alkor/gd/db_rss_{rss_provider}')
 # Директория для сохранения markdown-файлов с новостями с 21:00 МСК предыдущей торговой сессии
-md_news_dir = Path(fr'c:/Users/Alkor/gd/md_rss_{rss_provider}')
-num_mds = 30  # Количество последних интервалов для сохранения в markdown файлы
-num_dbs = 2  # Количество последних файлов БД новостей для обработки
+md_news_dir = Path(fr'c:/Users/Alkor/gd/md_{ticker_lc}_{rss_provider}')
+num_mds: int = 20  # Количество последних интервалов для сохранения в markdown файлы
+num_dbs: int = 2  # Количество последних файлов БД новостей для обработки
+time_start = '21:00:00'  # Время с которого начинается поиск новостей за предыдущую сессию в БД
+time_end = '20:59:59'  # Время, которым заканчивается поиск новостей за текущую сессию в БД
 
 
 def read_db_quote(db_path_quote: Path) -> pd.DataFrame:
@@ -146,10 +149,10 @@ def main(
         row1 = df.iloc[i]
         row2 = df.iloc[i - 1]
 
-        file_name = f"{row1['TRADEDATE']}.md"
+        file_name = f"{row1['TRADEDATE']}.md"  # Формирование имени файла из даты
         file_path = md_news_dir / file_name
-        date_max = f"{row1['TRADEDATE']} 20:59:59"
-        date_min = f"{row2['TRADEDATE']} 21:00:00"
+        date_min = f"{row2['TRADEDATE']} {time_start}"  # Дата и время старта поиска новостей в БД
+        date_max = f"{row1['TRADEDATE']} {time_end}"  # Дата и время окончания поиска новостей в БД
 
         if file_path.exists():
             print(f"Файл {file_name} уже существует, пропускаем.")

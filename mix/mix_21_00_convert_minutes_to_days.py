@@ -1,12 +1,25 @@
 """
 Конвертирует котировки, минутные бары фьючерса в дневные с заданным временем начала и конца дневной свечи.
 Дневная свеча формируется с 21:00:00 предыдущей сессии до 20:59:59 текущей сессии по МСК.
-При обнаружении нескольких контрактов в диапазоне (rollover), корректирует цены старого контракта на разницу (gap) для обеспечения непрерывности.
+При обнаружении нескольких контрактов в диапазоне (rollover), корректирует цены старого контракта
+на разницу (gap) для обеспечения непрерывности.
+Удаляет только последнюю запись по дате в поле TRADEDATE, если база существует.
+Добавляет только отсутствующие по дате записи, пропуская существующие.
 """
 
 import sqlite3
 from pathlib import Path
 from datetime import datetime
+
+
+# Параметры
+ticker: str = 'MIX'
+# Путь к файлу БД с минутными котировками скаченными с MOEX ISS API
+path_db_minutes: Path = Path(rf'C:\Users\Alkor\gd\data_quote_db\{ticker}_futures_minute_2025.db')
+# Путь к файлу БД с дневными котировками (с 21:00 предыдущей сессии)
+path_db_day: Path = Path(rf'C:\Users\Alkor\gd\data_quote_db\{ticker}_futures_day_2025_21-00.db')
+time_start = '21:00:00'  # Время старта поиска минутных баров в предыдущую сессию
+time_end = '20:59:59'  # Время окончания поиска минутных баров за текущую сессию
 
 def create_tables(connection: sqlite3.Connection) -> None:
     """Функция создания таблицы в БД, если её нет"""
@@ -198,7 +211,7 @@ def get_daily_candle(cursor, start: str, end: str) -> tuple:
 
 def save_daily_candle(connection: sqlite3.Connection, cursor, candle: tuple) -> None:
     """
-    Сохраняет дневную свечку в таблицу Futures.
+    Сохраняет дневную свечку в таблицу Futures, если записи для этой даты нет.
 
     Args:
         connection: Соединение с базой данных.
@@ -206,6 +219,15 @@ def save_daily_candle(connection: sqlite3.Connection, cursor, candle: tuple) -> 
         candle: Кортеж (TRADEDATE, OPEN, LOW, HIGH, CLOSE, SECID, LSTTRADE).
     """
     if candle:
+        # Проверяем наличие записи для этой даты
+        query_check = """
+            SELECT COUNT(*) FROM Futures WHERE TRADEDATE = ?
+        """
+        cursor.execute(query_check, (candle[0],))
+        if cursor.fetchone()[0] > 0:
+            print(f"Запись для {candle[0]} уже существует, пропускаем.")
+            return
+
         query = """
             INSERT INTO Futures (TRADEDATE, OPEN, LOW, HIGH, CLOSE, SECID, LSTTRADE)
             VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -218,6 +240,25 @@ def save_daily_candle(connection: sqlite3.Connection, cursor, candle: tuple) -> 
             except sqlite3.Error as e:
                 print(f"Ошибка при сохранении дневной свечки: {e}")
 
+def delete_latest_record(connection: sqlite3.Connection, cursor) -> None:
+    """
+    Удаляет последнюю запись по максимальной дате в поле TRADEDATE.
+    """
+    query_max = """
+        SELECT MAX(TRADEDATE) FROM Futures
+    """
+    cursor.execute(query_max)
+    max_date = cursor.fetchone()[0]
+    if max_date:
+        query_delete = """
+            DELETE FROM Futures WHERE TRADEDATE = ?
+        """
+        cursor.execute(query_delete, (max_date,))
+        connection.commit()
+        print(f"Удалена последняя запись для даты {max_date}")
+    else:
+        print("Таблица Futures пуста, ничего не удалено.")
+
 def main(db_path_minutes: Path, path_db_day: Path) -> None:
     """Главная функция для конвертации минутных котировок в дневные."""
     try:
@@ -229,23 +270,18 @@ def main(db_path_minutes: Path, path_db_day: Path) -> None:
         dates: list = get_sorted_dates(connection_minutes, cursor_minutes, db_path_minutes)
         print(f"Найдено дат: {dates}")
 
-        # Удаляем старую базу данных с дневными барами с 21:00 предыдущей сессии (если она существует)
-        if path_db_day.exists():
-            try:
-                path_db_day.unlink()
-                print(f"Старая база данных {path_db_day} удалена.")
-            except OSError as e:
-                print(f"Ошибка при удалении базы данных {path_db_day}: {e}")
-
-        # Создаем новую базу данных и таблицу Futures
+        # Создаем или открываем базу данных с дневными барами
         connection_day = sqlite3.connect(str(path_db_day))
         cursor_day = connection_day.cursor()
         create_tables(connection_day)
 
+        # Удаляем последнюю запись, если она существует
+        delete_latest_record(connection_day, cursor_day)
+
         # Обрабатываем каждую пару дат для формирования дневных свечек
-        for e, s in zip(dates, dates[1:] + ['1970-01-01']):
-            start = f"{s} 21:00:00"
-            end = f"{e} 20:59:59"
+        for date_end, date_start in zip(dates, dates[1:] + ['1970-01-01']):
+            start = f"{date_start} {time_start}"  # Дата и время начала дневной свечи.
+            end = f"{date_end} {time_end}"  # Дата и время конца дневной свечи.
 
             # Получаем дневную свечку из минутных данных
             candle = get_daily_candle(cursor_minutes, start, end)
@@ -261,18 +297,8 @@ def main(db_path_minutes: Path, path_db_day: Path) -> None:
         connection_day.close()
         print("Все соединения с базами данных закрыты.")
 
-    except sqlite3.Error as e:
-        print(f"Ошибка при работе с базой данных: {e}")
+    except sqlite3.Error as err:
+        print(f"Ошибка при работе с базой данных: {err}")
 
 if __name__ == '__main__':
-    ticker = 'MIX'
-    # Путь к файлу БД c минутными котировками скаченных с MOEX ISS
-    path_db_minutes: Path = Path(
-        rf'C:\Users\Alkor\gd\data_quote_db\{ticker}_futures_minute_2025.db'
-    )
-    # Путь к файлу БД с дневными котировками (с 21:00 предыдущей сессии)
-    path_db_day: Path = Path(
-        rf'C:\Users\Alkor\gd\data_quote_db\{ticker}_futures_day_2025_21-00.db'
-    )
-
     main(path_db_minutes, path_db_day)
