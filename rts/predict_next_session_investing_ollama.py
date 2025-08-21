@@ -22,7 +22,7 @@ cache_file = Path(fr'C:\Users\Alkor\PycharmProjects\beget_rss\{ticker_lc}\embedd
 model_name = "bge-m3"
 url_ai = "http://localhost:11434/api/embeddings"
 min_prev_files = 4   # Минимальное количество предыдущих файлов для предсказания
-max_prev_files = 11  # Максимальное количество предыдущих файлов для предсказания
+max_prev_files = 8  # Максимальное количество предыдущих файлов для предсказания
 # Папка для сохранения текстовых файлов
 output_dir = Path(fr'C:\Users\Alkor\gd\predict_ai\{ticker_lc}_investing_ollama')
 
@@ -198,7 +198,7 @@ def predict_next_bar(documents, cache):
                 print(f"\nПредсказание для даты {none_date}:")
                 print(f"Предсказанное направление: {predicted_next_bar}")
                 print(f"Процент сходства: {closest_similarity:.2f}%")
-                print("Метаданные ближайшего документа:")
+                print("Метаданные ближайшего похожего документа:")
                 for key in sorted(closest_metadata.keys()):
                     print(f"  {key}: {closest_metadata[key]}")
             else:

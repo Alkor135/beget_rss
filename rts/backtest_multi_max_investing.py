@@ -1,10 +1,7 @@
 """
-Скрипт для ретроспективного предсказания (backtesting) на основе markdown-файлов с новостями.
-Кэширует эмбеддинги в pickle-файл для избежания повторного создания ChromaDB.
-Проверяет актуальность кэша при изменении или добавлении markdown-файлов.
-Ограничивает количество предыдущих файлов для предсказаний параметром max_prev_files.
-Добавляет финансовый результат в пунктах (next_bar_pips) и накопительный результат (cumulative_next_bar_pips).
-Сохраняет результаты в CSV и XLSX файлы.
+Скрипт для проведения backtests с разными значениями max_prev_files от 10 до 30.
+Сохраняет только даты и cumulative_next_bar_pips для каждого значения в один XLSX файл на один лист.
+Колонки: test_date, max_10, max_11, ..., max_30.
 """
 
 import pandas as pd
@@ -18,15 +15,16 @@ from langchain_core.documents import Document
 from chromadb.utils.embedding_functions import OllamaEmbeddingFunction
 
 # Параметры
-ticker = 'MIX'
-ticker_lc = 'mix'
+ticker = 'RTS'
+ticker_lc = 'rts'
 md_path = Path(fr'C:\Users\Alkor\gd\md_{ticker_lc}_investing')
 cache_file = Path(fr'C:\Users\Alkor\PycharmProjects\beget_rss\{ticker_lc}\embeddings_investing_ollama.pkl')
 path_db_quote = Path(fr'C:\Users\Alkor\gd\data_quote_db\{ticker}_futures_day_2025_21-00.db')
 model_name = "bge-m3"
 url_ai = "http://localhost:11434/api/embeddings"
 min_prev_files = 4   # Минимальное количество предыдущих файлов для предсказаний
-max_prev_files = 8  # Максимальное количество предыдущих файлов для предсказаний
+# Итоговый XLSX файл
+output_file = fr'C:\Users\Alkor\PycharmProjects\beget_rss\{ticker_lc}\backtest_results_multi_max_investing.xlsx'
 
 def cosine_similarity(vec1, vec2):
     """Вычисляет косинусное сходство между двумя векторами."""
@@ -128,11 +126,9 @@ def cache_embeddings(documents, cache_file, model_name, url_ai):
     print(f"Эмбеддинги сохранены в {cache_file}")
     return cache
 
-def backtest_predictions(documents, cache, quotes_df):
-    """Проводит backtesting: для каждой тестовой даты симулирует предсказание с использованием кэша."""
+def backtest_predictions(documents, cache, quotes_df, max_prev_files):
+    """Проводит backtesting для заданного max_prev_files и возвращает DataFrame с test_date и cumulative_next_bar_pips."""
     results = []
-    total_predictions = 0
-    correct_predictions = 0
 
     for test_idx in range(min_prev_files, len(documents)):
         test_doc = documents[test_idx]
@@ -140,7 +136,6 @@ def backtest_predictions(documents, cache, quotes_df):
         test_date = test_doc.metadata['date']
 
         if real_next_bar == 'unknown' or real_next_bar == 'None':
-            print(f"Пропуск даты {test_date}: next_bar неизвестен. {real_next_bar=}")
             continue
 
         # Получение эмбеддинга тестовой даты из кэша
@@ -151,17 +146,15 @@ def backtest_predictions(documents, cache, quotes_df):
                 test_embedding = item['embedding']
                 break
         if test_embedding is None:
-            print(f"Эмбеддинг для даты {test_date} не найден в кэше.")
             continue
 
         # Получение предыдущих документов из кэша, ближайших по дате
         prev_cache = sorted(
             [item for item in cache if item['metadata']['date'] < test_date],
             key=lambda x: x['metadata']['date'], reverse=True
-        )[:max_prev_files]  # Ограничиваем max_prev_files ближайшими датами
+        )[:max_prev_files]
 
         if len(prev_cache) < min_prev_files:
-            print(f"Недостаточно предыдущих документов для даты {test_date}: {len(prev_cache)}")
             continue
 
         # Вычисление сходств
@@ -184,51 +177,22 @@ def backtest_predictions(documents, cache, quotes_df):
                 next_bar_pips_value = quotes_df.loc[test_date, 'next_bar_pips']
                 next_bar_pips = abs(next_bar_pips_value) if is_correct else -abs(next_bar_pips_value)
             except KeyError:
-                print(f"Данные котировок для даты {test_date} не найдены.")
                 continue
 
             results.append({
                 'test_date': test_date,
-                'predicted_next_bar': predicted_next_bar,
-                'real_next_bar': real_next_bar,
-                'similarity': closest_similarity,
-                'is_correct': is_correct,
                 'next_bar_pips': next_bar_pips
             })
-
-            total_predictions += 1
-            if is_correct:
-                correct_predictions += 1
-
-            print(f"Дата: {test_date}, Предсказание: {predicted_next_bar}, Реальное: {real_next_bar}, "
-                  f"Сходство: {closest_similarity:.2f}%, Правильно: {is_correct}, next_bar_pips: {next_bar_pips}")
 
     # Создание DataFrame и добавление накопительного результата
     results_df = pd.DataFrame(results)
     if not results_df.empty:
         results_df['cumulative_next_bar_pips'] = results_df['next_bar_pips'].cumsum()
+        return results_df[['test_date', 'cumulative_next_bar_pips']]
     else:
-        print("Нет результатов для сохранения.")
+        return pd.DataFrame()
 
-    # Статистика
-    if total_predictions > 0:
-        accuracy = (correct_predictions / total_predictions) * 100
-        print(f"\nОбщая точность: {accuracy:.2f}% ({correct_predictions}/{total_predictions})")
-        if not results_df.empty:
-            print(f"Итоговый накопительный результат: {results_df['cumulative_next_bar_pips'].iloc[-1]:.2f} пунктов")
-    else:
-        print("Нет предсказаний для оценки.")
-
-    # Сохранение результатов в CSV и XLSX
-    if not results_df.empty:
-        # results_df.to_csv('backtest_results_investing_ollama.csv', index=False)
-        results_df.to_excel('backtest_results_investing_ollama.xlsx', index=False, engine='openpyxl')
-        # print("Результаты сохранены в backtest_results_investing_ollama.csv и backtest_results_investing_ollama.xlsx")
-        print("Результаты сохранены backtest_results_investing_ollama.xlsx")
-    else:
-        print("Нет результатов для сохранения в файл.")
-
-if __name__ == '__main__':
+def main():
     # Загрузка котировок
     if not path_db_quote.exists():
         print(f"Ошибка: Файл базы данных котировок не найден: {path_db_quote}")
@@ -241,6 +205,29 @@ if __name__ == '__main__':
         print(f"Недостаточно файлов: {len(documents)}. Требуется минимум {min_prev_files + 1}.")
         exit(1)
 
-    # Кэширование эмбеддингов
+    # Кэширование эмбеддингов (один раз)
     cache = cache_embeddings(documents, cache_file, model_name, url_ai)
-    backtest_predictions(documents, cache, quotes_df)
+
+    # Создание итогового DataFrame с колонкой test_date
+    all_results = pd.DataFrame()
+
+    # Диапазон max_prev_files от 10 до 30
+    for max_prev in range(5, 31):
+        print(f"Проводим backtest для max_prev_files = {max_prev}")
+        results_df = backtest_predictions(documents, cache, quotes_df, max_prev)
+        if not results_df.empty:
+            results_df = results_df.rename(columns={'cumulative_next_bar_pips': f'max_{max_prev}'})
+            if all_results.empty:
+                all_results = results_df
+            else:
+                all_results = all_results.merge(results_df, on='test_date', how='outer')
+
+    # Сохранение в XLSX
+    if not all_results.empty:
+        all_results.to_excel(output_file, index=False, engine='openpyxl')
+        print(f"Результаты сохранены в {output_file}")
+    else:
+        print("Нет результатов для сохранения.")
+
+if __name__ == '__main__':
+    main()

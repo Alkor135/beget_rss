@@ -198,7 +198,7 @@ def predict_next_bar(documents, cache):
                 print(f"\nПредсказание для даты {none_date}:")
                 print(f"Предсказанное направление: {predicted_next_bar}")
                 print(f"Процент сходства: {closest_similarity:.2f}%")
-                print("Метаданные ближайшего документа:")
+                print("Метаданные ближайшего похожего документа:")
                 for key in sorted(closest_metadata.keys()):
                     print(f"  {key}: {closest_metadata[key]}")
             else:
