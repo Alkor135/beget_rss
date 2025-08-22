@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# coding: utf-8
 import subprocess
 from pathlib import Path
 from datetime import datetime
