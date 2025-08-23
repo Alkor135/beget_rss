@@ -22,8 +22,8 @@ path_db_quote = Path(fr'C:/Users/Alkor/gd/data_quote_db/{ticker}_futures_day_202
 db_news_dir = Path(fr'C:/Users/Alkor/gd/db_rss_{rss_provider}')
 # Директория для сохранения markdown-файлов с новостями с 21:00 МСК предыдущей торговой сессии
 md_news_dir = Path(fr'c:/Users/Alkor/gd/md_{ticker_lc}_{rss_provider}')
-num_mds: int = 100  # Количество последних интервалов для сохранения в markdown файлы
-num_dbs: int = 3  # Количество последних файлов БД новостей для обработки
+num_mds: int = 20  # Количество последних интервалов для сохранения в markdown файлы
+num_dbs: int = 2  # Количество последних файлов БД новостей для обработки
 time_start = '21:00:00'  # Время с которого начинается поиск новостей за предыдущую сессию в БД
 time_end = '20:59:59'  # Время, которым заканчивается поиск новостей за текущую сессию в БД
 
@@ -118,14 +118,30 @@ def delete_latest_md_file(md_news_dir: Path) -> None:
 
 
 def main(
-        path_db_quote: Path, db_news_dir: Path, md_news_dir: Path,
-        num_mds: int = 30, num_dbs: int = 3
+        path_db_quote: Path = path_db_quote,
+        db_news_dir: Path = db_news_dir,
+        md_news_dir: Path = md_news_dir,
+        num_mds: int = 30,
+        num_dbs: int = 3
 ) -> None:
     """
     Основная функция: читает котировки и новости из последних num_dbs файлов БД,
     удаляет самый последний markdown-файл, формирует и сохраняет не более num_mds markdown-файлов
     с новостями и метаданными за самые последние даты, не перезаписывая существующие файлы.
     """
+    # Создаем директорию для сохранения markdown-файлов, если она не существует
+    md_news_dir.mkdir(parents=True, exist_ok=True)
+
+    if not path_db_quote.exists():
+        print(f"Ошибка: Файл базы данных котировок не найден. {path_db_quote}")
+        exit()
+
+    # Проверяем наличие файлов БД новостей
+    db_files = list(db_news_dir.glob("rss_news_investing_*_*.db"))
+    if not db_files:
+        print("Ошибка: Файлы баз данных новостей не найдены.")
+        exit()
+
     # Получаем последние файлы БД новостей
     db_paths = get_latest_db_files(db_news_dir, num_files=num_dbs)
     if len(db_paths) < num_dbs:
@@ -170,19 +186,4 @@ def main(
 
 
 if __name__ == '__main__':
-
-
-    # Создаем директорию для сохранения markdown-файлов, если она не существует
-    md_news_dir.mkdir(parents=True, exist_ok=True)
-
-    if not path_db_quote.exists():
-        print(f"Ошибка: Файл базы данных котировок не найден. {path_db_quote}")
-        exit()
-
-    # Проверяем наличие файлов БД новостей
-    db_files = list(db_news_dir.glob("rss_news_investing_*_*.db"))
-    if not db_files:
-        print("Ошибка: Файлы баз данных новостей не найдены.")
-        exit()
-
     main(path_db_quote, db_news_dir, md_news_dir, num_mds=num_mds, num_dbs=num_dbs)

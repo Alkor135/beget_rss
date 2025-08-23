@@ -1,13 +1,13 @@
 # Скрипт для последовательного запуска зависимых Python-скриптов.
-# Передаёт параметры num_mds=20 и num_dbs=2 для si_21_00_db_investing_month_to_md.
-# Логирует выполнение и ошибки в C:\Users\Alkor\gd\predict_ai\si_investing_ollama\log.
+# Передаёт параметры num_mds=20 и num_dbs=2 для br_21_00_db_investing_month_to_md.
+# Логирует выполнение и ошибки в C:\Users\Alkor\gd\predict_ai\br_investing_ollama\log.
 
-from si_download_minutes_to_db import main as download_minutes
-from si_21_00_convert_minutes_to_days import main as convert_to_days
-from si_21_00_db_investing_month_to_md import main as convert_to_md
-from si_predict_next_session_investing_ollama import main as predict_session
-from si_backtesting_investing_ollama import main as backtest
-from si_backtest_multi_max_investing import main as backtest_multi
+from br_download_minutes_to_db import main as download_minutes
+from br_21_00_convert_minutes_to_days import main as convert_to_days
+from br_21_00_db_investing_month_to_md import main as convert_to_md
+from br_predict_next_session_investing_ollama import main as predict_session
+from br_backtesting_investing_ollama import main as backtest
+from br_backtest_multi_max_investing import main as backtest_multi
 from pathlib import Path
 from datetime import datetime
 
@@ -20,17 +20,17 @@ def ensure_dir(directory: Path):
     directory.mkdir(parents=True, exist_ok=True)
 
 def run_python_scripts():
-    log_dir = Path(r"C:\Users\Alkor\gd\predict_ai\si_investing_ollama\log")
+    log_dir = Path(r"C:\Users\Alkor\gd\predict_ai\br_investing_ollama\log")
     ensure_dir(log_dir)
     full_log = log_dir / "full.log"
 
     for func, name, kwargs in [
-        (download_minutes, "si_download_minutes_to_db", {}),
-        (convert_to_days, "si_21_00_convert_minutes_to_days", {}),
-        (convert_to_md, "si_21_00_db_investing_month_to_md", {"num_mds": 20, "num_dbs": 2}),
-        (predict_session, "si_predict_next_session_investing_ollama", {"max_prev_files": 5}),
-        (backtest, "si_backtesting_investing_ollama", {"max_prev_files": 5}),
-        (backtest_multi, "si_backtest_multi_max_investing", {})
+        (download_minutes, "br_download_minutes_to_db", {}),
+        (convert_to_days, "br_21_00_convert_minutes_to_days", {}),
+        (convert_to_md, "br_21_00_db_investing_month_to_md", {"num_mds": 20, "num_dbs": 2}),
+        (predict_session, "br_predict_next_session_investing_ollama", {"max_prev_files": 5}),
+        (backtest, "br_backtesting_investing_ollama", {"max_prev_files": 5}),
+        (backtest_multi, "br_backtest_multi_max_investing", {})
     ]:
         timestamp = get_timestamp()
         # script_log = log_dir / f"{name}.log"

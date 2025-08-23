@@ -118,14 +118,30 @@ def delete_latest_md_file(md_news_dir: Path) -> None:
 
 
 def main(
-        path_db_quote: Path, db_news_dir: Path, md_news_dir: Path,
-        num_mds: int = 30, num_dbs: int = 3
+        path_db_quote: Path = path_db_quote,
+        db_news_dir: Path = db_news_dir,
+        md_news_dir: Path = md_news_dir,
+        num_mds: int = 30,
+        num_dbs: int = 3
 ) -> None:
     """
     Основная функция: читает котировки и новости из последних num_dbs файлов БД,
     удаляет самый последний markdown-файл, формирует и сохраняет не более num_mds markdown-файлов
     с новостями и метаданными за самые последние даты, не перезаписывая существующие файлы.
     """
+    # Создаем директорию для сохранения markdown-файлов, если она не существует
+    md_news_dir.mkdir(parents=True, exist_ok=True)
+
+    if not path_db_quote.exists():
+        print(f"Ошибка: Файл базы данных котировок не найден. {path_db_quote}")
+        exit()
+
+    # Проверяем наличие файлов БД новостей
+    db_files = list(db_news_dir.glob("rss_news_investing_*_*.db"))
+    if not db_files:
+        print("Ошибка: Файлы баз данных новостей не найдены.")
+        exit()
+
     # Получаем последние файлы БД новостей
     db_paths = get_latest_db_files(db_news_dir, num_files=num_dbs)
     if len(db_paths) < num_dbs:
@@ -170,19 +186,4 @@ def main(
 
 
 if __name__ == '__main__':
-
-
-    # Создаем директорию для сохранения markdown-файлов, если она не существует
-    md_news_dir.mkdir(parents=True, exist_ok=True)
-
-    if not path_db_quote.exists():
-        print(f"Ошибка: Файл базы данных котировок не найден. {path_db_quote}")
-        exit()
-
-    # Проверяем наличие файлов БД новостей
-    db_files = list(db_news_dir.glob("rss_news_investing_*_*.db"))
-    if not db_files:
-        print("Ошибка: Файлы баз данных новостей не найдены.")
-        exit()
-
     main(path_db_quote, db_news_dir, md_news_dir, num_mds=num_mds, num_dbs=num_dbs)

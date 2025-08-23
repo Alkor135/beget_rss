@@ -10,7 +10,7 @@ import pandas as pd
 
 
 # Параметры
-ticker: str = 'RTS'  # Тикер фьючерса
+ticker: str = 'GOLD'  # Тикер фьючерса
 # Путь к базе данных с минутными барами фьючерсов
 path_db: Path = Path(rf'C:\Users\Alkor\gd\data_quote_db\{ticker}_futures_minute_2025.db')
 # Начальная дата для загрузки данных

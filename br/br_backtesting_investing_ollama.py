@@ -4,7 +4,7 @@
 Проверяет актуальность кэша при изменении или добавлении markdown-файлов.
 Ограничивает количество предыдущих файлов для предсказаний параметром max_prev_files.
 Добавляет финансовый результат в пунктах (next_bar_pips) и накопительный результат (cumulative_next_bar_pips).
-Сохраняет результаты в CSV и XLSX файлы.
+Сохраняет результаты XLSX файл.
 """
 
 import pandas as pd
@@ -18,10 +18,10 @@ from langchain_core.documents import Document
 from chromadb.utils.embedding_functions import OllamaEmbeddingFunction
 
 # Параметры
-ticker = 'MIX'
-ticker_lc = 'mix'
+ticker = 'BR'
+ticker_lc = 'br'
 md_path = Path(fr'C:\Users\Alkor\gd\md_{ticker_lc}_investing')
-cache_file = Path(fr'C:\Users\Alkor\PycharmProjects\beget_rss\{ticker_lc}\embeddings_investing_ollama.pkl')
+cache_file = Path(fr'C:\Users\Alkor\PycharmProjects\beget_rss\{ticker_lc}\{ticker_lc}_embeddings_investing_ollama.pkl')
 path_db_quote = Path(fr'C:\Users\Alkor\gd\data_quote_db\{ticker}_futures_day_2025_21-00.db')
 model_name = "bge-m3"
 url_ai = "http://localhost:11434/api/embeddings"
@@ -128,8 +128,23 @@ def cache_embeddings(documents, cache_file, model_name, url_ai):
     print(f"Эмбеддинги сохранены в {cache_file}")
     return cache
 
-def backtest_predictions(documents, cache, quotes_df):
+def main(max_prev_files: int = 8):
     """Проводит backtesting: для каждой тестовой даты симулирует предсказание с использованием кэша."""
+    # Загрузка котировок
+    if not path_db_quote.exists():
+        print(f"Ошибка: Файл базы данных котировок не найден: {path_db_quote}")
+        exit(1)
+    quotes_df = load_quotes(path_db_quote)
+
+    # Загрузка markdown-файлов
+    documents = load_markdown_files(md_path)
+    if len(documents) < min_prev_files + 1:
+        print(f"Недостаточно файлов: {len(documents)}. Требуется минимум {min_prev_files + 1}.")
+        exit(1)
+
+    # Кэширование эмбеддингов
+    cache = cache_embeddings(documents, cache_file, model_name, url_ai)
+
     results = []
     total_predictions = 0
     correct_predictions = 0
@@ -222,25 +237,11 @@ def backtest_predictions(documents, cache, quotes_df):
     # Сохранение результатов в CSV и XLSX
     if not results_df.empty:
         # results_df.to_csv('backtest_results_investing_ollama.csv', index=False)
-        results_df.to_excel('backtest_results_investing_ollama.xlsx', index=False, engine='openpyxl')
+        results_df.to_excel(f'{ticker_lc}_backtest_results_investing_ollama.xlsx', index=False, engine='openpyxl')
         # print("Результаты сохранены в backtest_results_investing_ollama.csv и backtest_results_investing_ollama.xlsx")
-        print("Результаты сохранены backtest_results_investing_ollama.xlsx")
+        print(f"Результаты сохранены в {ticker_lc}_backtest_results_investing_ollama.xlsx")
     else:
         print("Нет результатов для сохранения в файл.")
 
 if __name__ == '__main__':
-    # Загрузка котировок
-    if not path_db_quote.exists():
-        print(f"Ошибка: Файл базы данных котировок не найден: {path_db_quote}")
-        exit(1)
-    quotes_df = load_quotes(path_db_quote)
-
-    # Загрузка markdown-файлов
-    documents = load_markdown_files(md_path)
-    if len(documents) < min_prev_files + 1:
-        print(f"Недостаточно файлов: {len(documents)}. Требуется минимум {min_prev_files + 1}.")
-        exit(1)
-
-    # Кэширование эмбеддингов
-    cache = cache_embeddings(documents, cache_file, model_name, url_ai)
-    backtest_predictions(documents, cache, quotes_df)
+    main(max_prev_files=max_prev_files)

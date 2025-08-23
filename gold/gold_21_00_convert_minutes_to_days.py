@@ -13,7 +13,7 @@ from datetime import datetime
 
 
 # Параметры
-ticker: str = 'SPYF'
+ticker: str = 'GOLD'
 # Путь к файлу БД с минутными котировками скаченными с MOEX ISS API
 path_db_minutes: Path = Path(rf'C:\Users\Alkor\gd\data_quote_db\{ticker}_futures_minute_2025.db')
 # Путь к файлу БД с дневными котировками (с 21:00 предыдущей сессии)

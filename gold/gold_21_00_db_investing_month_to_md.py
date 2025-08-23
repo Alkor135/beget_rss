@@ -13,8 +13,8 @@ import sqlite3
 
 
 # Параметры
-ticker: str = 'SPYF'
-ticker_lc = 'spyf'
+ticker: str = 'GOLD'
+ticker_lc = 'gold'
 rss_provider: str = 'investing'  # Поставщик новостей
 # Директория с БД дневных свечей с 21:00 предыдущей сессии до 21:00 даты свечи.
 path_db_quote = Path(fr'C:/Users/Alkor/gd/data_quote_db/{ticker}_futures_day_2025_21-00.db')

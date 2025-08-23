@@ -18,7 +18,7 @@ from contextlib import redirect_stdout
 # Параметры
 ticker_lc = 'rts'
 md_path = Path(fr'C:\Users\Alkor\gd\md_{ticker_lc}_investing')
-cache_file = Path(fr'C:\Users\Alkor\PycharmProjects\beget_rss\{ticker_lc}\embeddings_investing_ollama.pkl')
+cache_file = Path(fr'C:\Users\Alkor\PycharmProjects\beget_rss\{ticker_lc}\{ticker_lc}_embeddings_investing_ollama.pkl')
 model_name = "bge-m3"
 url_ai = "http://localhost:11434/api/embeddings"
 min_prev_files = 4   # Минимальное количество предыдущих файлов для предсказания
@@ -136,8 +136,17 @@ def cache_embeddings(documents, cache_file, model_name, url_ai):
     print(f"Эмбеддинги сохранены в {cache_file}")
     return cache
 
-def predict_next_bar(documents, cache):
+def main(max_prev_files: int = 8):
     """Предсказывает направление next_bar для документа с next_bar='None'."""
+    # Загрузка markdown-файлов
+    documents = load_markdown_files(md_path)
+    if len(documents) < min_prev_files + 1:
+        print(f"Недостаточно файлов: {len(documents)}. Требуется минимум {min_prev_files + 1}.")
+        exit(1)
+
+    # Кэширование эмбеддингов
+    cache = cache_embeddings(documents, cache_file, model_name, url_ai)
+
     # Создание папки для вывода, если она не существует
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -207,12 +216,4 @@ def predict_next_bar(documents, cache):
     print(f"Результаты сохранены в {output_file}")
 
 if __name__ == '__main__':
-    # Загрузка markdown-файлов
-    documents = load_markdown_files(md_path)
-    if len(documents) < min_prev_files + 1:
-        print(f"Недостаточно файлов: {len(documents)}. Требуется минимум {min_prev_files + 1}.")
-        exit(1)
-
-    # Кэширование эмбеддингов
-    cache = cache_embeddings(documents, cache_file, model_name, url_ai)
-    predict_next_bar(documents, cache)
+    main(max_prev_files=max_prev_files)

@@ -200,7 +200,11 @@ def get_future_date_results(
 
         start_date += timedelta(days=1)
 
-def main(ticker: str, path_db: Path, start_date: date) -> None:
+def main(
+        ticker: str = ticker,
+        path_db: Path = path_db,
+        start_date: date = start_date
+) -> None:
     """
     Основная функция: подключается к базе данных, создает таблицы и загружает данные по фьючерсам.
     """
