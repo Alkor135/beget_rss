@@ -108,8 +108,10 @@ except Exception as e:
 direction = None
 if "Предсказанное направление: down" in content:
     direction = 'down'
+    logger.info(f"Предсказанное направление: down: {direction=}")
 elif "Предсказанное направление: up" in content:
     direction = 'up'
+    logger.info(f"Предсказанное направление: up: {direction=}")
 else:
     logger.warning(f"В файле нет предсказанного направления.")
 
@@ -137,7 +139,7 @@ if direction == 'down':
             'PRICE': str(market_price),  # Цена исполнения по рынку
             'QUANTITY': str(quantity),  # Кол-во в лотах
             'TYPE': 'M'}  # L = лимитная заявка (по умолчанию), M = рыночная заявка
-        # logger.info(f'Заявка отправлена на рынок: {qp.send_transaction(transaction)["data"]}')
+        logger.info(f'Заявка отправлена на рынок: {qp.send_transaction(transaction)["data"]}')
     elif current_pos > 0:
         # Перевернуть позицию: SELL объемом (current_pos + quantity) по рыночной цене
         reverse_qty = current_pos + quantity
@@ -162,7 +164,12 @@ if direction == 'down':
             'PRICE': str(market_price),  # Цена исполнения по рынку
             'QUANTITY': str(reverse_qty),  # Кол-во в лотах
             'TYPE': 'M'}  # L = лимитная заявка (по умолчанию), M = рыночная заявка
-        # logger.info(f'Заявка отправлена на рынок: {qp.send_transaction(transaction)["data"]}')
+        logger.info(f'Заявка отправлена на рынок: {qp.send_transaction(transaction)["data"]}')
+    else:
+        logger.info(
+            f'Направление открытой позиции совпадает. {current_pos=}, {direction=}. '
+            f'Никаких действий не предпринимаем.'
+        )
 elif direction == 'up':
     if current_pos == 0:
         # Выставить рыночный ордер на BUY
@@ -187,7 +194,7 @@ elif direction == 'up':
             'PRICE': str(market_price),  # Цена исполнения по рынку
             'QUANTITY': str(quantity),  # Кол-во в лотах
             'TYPE': 'M'}  # L = лимитная заявка (по умолчанию), M = рыночная заявка
-        # logger.info(f'Заявка отправлена на рынок: {qp.send_transaction(transaction)["data"]}')
+        logger.info(f'Заявка отправлена на рынок: {qp.send_transaction(transaction)["data"]}')
 
     elif current_pos < 0:
         # Перевернуть позицию: BUY объемом (|current_pos| + quantity) по рыночной цене
@@ -213,12 +220,12 @@ elif direction == 'up':
             'PRICE': str(market_price),  # Цена исполнения по рынку
             'QUANTITY': str(reverse_qty),  # Кол-во в лотах
             'TYPE': 'M'}  # L = лимитная заявка (по умолчанию), M = рыночная заявка
-        # logger.info(f'Заявка отправлена на рынок: {qp.send_transaction(transaction)["data"]}')
-else:
-    logger.info(
-        f'Направление открытой позиции совпадает. {current_pos=}, {direction=}. '
-        f'Никаких действий не предпринимаем.'
-    )
+        logger.info(f'Заявка отправлена на рынок: {qp.send_transaction(transaction)["data"]}')
+    else:
+        logger.info(
+            f'Направление открытой позиции совпадает. {current_pos=}, {direction=}. '
+            f'Никаких действий не предпринимаем.'
+        )
 
 # Закрываем соединение для запросов и поток обработки функций обратного вызова
 qp.close_connection_and_thread()
