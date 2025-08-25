@@ -17,10 +17,10 @@ if __name__ == '__main__':  # Точка входа при запуске это
                         handlers=[logging.FileHandler('Transactions.log', encoding='utf-8'), logging.StreamHandler()])  # Лог записываем в файл и выводим на консоль
     logging.Formatter.converter = lambda *args: datetime.now(tz=qp_provider.tz_msk).timetuple()  # В логе время указываем по МСК
 
-    class_code = 'TQBR'  # Режим торгов
-    sec_code = 'SBER'  # Тикер
-    # class_code = 'SPBFUT'  # Режим торгов
-    # sec_code = 'CNYRUBF'  # Тикер
+    # class_code = 'TQBR'  # Режим торгов
+    # sec_code = 'SBER'  # Тикер
+    class_code = 'SPBFUT'  # Режим торгов
+    sec_code = 'RIU5'  # Тикер
     quantity = 1  # Кол-во в лотах
 
     account = next((account for account in qp_provider.accounts if class_code in account['class_codes']), None)  # Ищем первый счет с режимом торгов тикера

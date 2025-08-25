@@ -1,7 +1,7 @@
 import datetime
 import os
 import logging
-import backtrader as bt
+import backtrader as bt  # pip install backtrader
 from BackTraderQuik import QKStore  # Импорт из BackTraderQuik (скопируйте файлы из https://github.com/cia76/BackTraderQuik)
 
 # Настройка логирования для обработки ошибок
