@@ -4,8 +4,6 @@
 import logging  # Выводим лог на консоль и в файл
 import datetime
 import itertools  # Итератор для уникальных номеров транзакций
-import os
-import time
 from pathlib import Path
 
 from QuikPy import QuikPy
@@ -216,23 +214,11 @@ elif direction == 'up':
             'QUANTITY': str(reverse_qty),  # Кол-во в лотах
             'TYPE': 'M'}  # L = лимитная заявка (по умолчанию), M = рыночная заявка
         # logger.info(f'Заявка отправлена на рынок: {qp.send_transaction(transaction)["data"]}')
-
-
-# # Если транзакция отправлена успешно (проверьте по trans_reply), переименовать файл
-# if trans_reply and 'trans_id' in trans_reply:  # Пример проверки успеха (адаптируйте по документации QuikPy)
-#     os.rename(file_path, processed_path)
-#     print(f"Файл обработан и переименован в {processed_path}")
-# else:
-#     print("Ошибка отправки ордера. Файл не переименован.")
-
-# try:
-#     # 0 - открытая позиция
-#     holding = qp.get_futures_holding(firm_id, account, sec_code, '0')
-#     logger.info(f"Позиция: {holding}")
-# except (KeyError, ValueError) as e:
-#     logger.error(f"Ошибка получения открытой позиции: {e}")
-#     exit()
-
+else:
+    logger.info(
+        f'Направление открытой позиции совпадает. {current_pos=}, {direction=}. '
+        f'Никаких действий не предпринимаем.'
+    )
 
 # Закрываем соединение для запросов и поток обработки функций обратного вызова
 qp.close_connection_and_thread()
