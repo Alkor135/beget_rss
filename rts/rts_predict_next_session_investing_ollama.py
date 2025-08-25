@@ -14,6 +14,7 @@ import yaml
 from langchain_core.documents import Document
 from chromadb.utils.embedding_functions import OllamaEmbeddingFunction
 from contextlib import redirect_stdout
+import datetime
 
 # Параметры
 ticker_lc = 'rts'
@@ -121,7 +122,8 @@ def cache_embeddings(documents, cache_file, model_name, url_ai):
             cache = pickle.load(f)
         return cache
 
-    print("Вычисление эмбеддингов...")
+    timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+    print(f"{timestamp} - Вычисление эмбеддингов...")
     ef = OllamaEmbeddingFunction(model_name=model_name, url=url_ai)
     cache = []
     for doc in documents:
@@ -133,7 +135,8 @@ def cache_embeddings(documents, cache_file, model_name, url_ai):
         })
     with open(cache_file, 'wb') as f:
         pickle.dump(cache, f)
-    print(f"Эмбеддинги сохранены в {cache_file}")
+    timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+    print(f"{timestamp} - Эмбеддинги сохранены в {cache_file}")
     return cache
 
 def main(max_prev_files: int = 8):
