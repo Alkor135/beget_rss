@@ -122,7 +122,7 @@ def cache_embeddings(documents, cache_file, model_name, url_ai):
             cache = pickle.load(f)
         return cache
 
-    timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+    timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
     print(f"{timestamp} - Вычисление эмбеддингов...")
     ef = OllamaEmbeddingFunction(model_name=model_name, url=url_ai)
     cache = []
@@ -135,7 +135,7 @@ def cache_embeddings(documents, cache_file, model_name, url_ai):
         })
     with open(cache_file, 'wb') as f:
         pickle.dump(cache, f)
-    timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+    timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
     print(f"{timestamp} - Эмбеддинги сохранены в {cache_file}")
     return cache
 
