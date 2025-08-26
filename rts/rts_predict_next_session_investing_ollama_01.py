@@ -254,7 +254,7 @@ def main(max_prev_files: int = 8):
                 closest_similarity, closest_metadata = similarities[0]
                 predicted_next_bar = closest_metadata['next_bar']
 
-                print(f"\nПредсказание для даты {none_date}:")
+                print(f"\nПредсказание для даты {none_date} {min_prev_files}/{max_prev_files}:")
                 print(f"Предсказанное направление: {predicted_next_bar}")
                 print(f"Процент сходства: {closest_similarity:.2f}%")
                 print("Метаданные ближайшего похожего документа:")
