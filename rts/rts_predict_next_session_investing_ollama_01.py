@@ -23,7 +23,7 @@ cache_file = Path(fr'C:\Users\Alkor\PycharmProjects\beget_rss\{ticker_lc}\{ticke
 model_name = "bge-m3"
 url_ai = "http://localhost:11434/api/embeddings"
 min_prev_files = 4   # Минимальное количество предыдущих файлов для предсказания
-max_prev_files = 8  # Максимальное количество предыдущих файлов для предсказания
+max_prev_files = 7  # Максимальное количество предыдущих файлов для предсказания
 # Папка для сохранения текстовых файлов
 output_dir = Path(fr'C:\Users\Alkor\gd\predict_ai\{ticker_lc}_investing_ollama')
 
@@ -152,8 +152,8 @@ def cache_is_valid(documents, cache_file):
 def cache_embeddings(documents, cache_file, model_name, url_ai):
     ef = OllamaEmbeddingFunction(model_name=model_name, url=url_ai)
     current_files = {
-        doc.metadata['source']: (doc, hashlib.md5(doc.page_content.encode()).hexdigest()) for doc
-        in documents}
+        doc.metadata['source']: (doc, hashlib.md5(doc.page_content.encode()).hexdigest()) for doc in documents
+    }
 
     cache = []
     if cache_file.exists():
@@ -170,8 +170,7 @@ def cache_embeddings(documents, cache_file, model_name, url_ai):
 
     if new_docs:
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
-        print(
-            f"{timestamp} - Вычисление эмбеддингов для {len(new_docs)} новых/изменённых файлов...")
+        print(f"{timestamp} - Вычисление эмбеддингов для {len(new_docs)} новых/изменённых файлов...")
         contents = [doc.page_content for doc in new_docs]
         embeddings = ef(contents)
         for i, doc in enumerate(new_docs):
@@ -265,6 +264,8 @@ def main(max_prev_files: int = 8):
                 print("Нет похожих документов для предсказания.")
 
     print(f"Результаты сохранены в {output_file}")
+    print(f"\nПредсказание для даты {none_date}:")
+    print(f"Предсказанное направление для {min_prev_files}/{max_prev_files}: {predicted_next_bar}")
 
 if __name__ == '__main__':
     main(max_prev_files=max_prev_files)

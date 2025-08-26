@@ -26,7 +26,7 @@ path_db_quote = Path(fr'C:\Users\Alkor\gd\data_quote_db\{ticker}_futures_day_202
 model_name = "bge-m3"
 url_ai = "http://localhost:11434/api/embeddings"
 min_prev_files = 4   # Минимальное количество предыдущих файлов для предсказаний
-max_prev_files = 8  # Максимальное количество предыдущих файлов для предсказаний
+max_prev_files = 7  # Максимальное количество предыдущих файлов для предсказаний
 
 def cosine_similarity(vec1, vec2):
     """Вычисляет косинусное сходство между двумя векторами."""
@@ -230,7 +230,10 @@ def main(max_prev_files: int = 8):
         accuracy = (correct_predictions / total_predictions) * 100
         print(f"\nОбщая точность: {accuracy:.2f}% ({correct_predictions}/{total_predictions})")
         if not results_df.empty:
-            print(f"Итоговый накопительный результат: {results_df['cumulative_next_bar_pips'].iloc[-1]:.2f} пунктов")
+            print(
+                f"Итоговый накопительный для {min_prev_files}/{max_prev_files} результат: "
+                f"{results_df['cumulative_next_bar_pips'].iloc[-1]:.2f} пунктов"
+            )
     else:
         print("Нет предсказаний для оценки.")
 
