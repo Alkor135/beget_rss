@@ -4,7 +4,7 @@
 
 from pathlib import Path
 import sqlite3
-from datetime import datetime, timedelta, date, time
+from datetime import datetime, timedelta, date
 import requests
 import pandas as pd
 
@@ -17,7 +17,7 @@ path_db: Path = Path(rf'C:\Users\Alkor\gd\data_quote_db\{ticker}_futures_minute_
 start_date: date = datetime.strptime('2025-06-02', "%Y-%m-%d").date()
 
 
-def request_moex(session, url, retries = 5, timeout = 10):
+def request_moex(session, url, retries = 3, timeout = 5):
     """Функция запроса данных с повторными попытками"""
     for attempt in range(retries):
         try:
@@ -34,7 +34,7 @@ def create_tables(connection: sqlite3.Connection) -> None:
     try:
         with connection:
             connection.execute('''CREATE TABLE if not exists Futures (
-                            TRADEDATE         TEXT PRIMARY KEY UNIQUE NOT NULL,
+                            TRADEDATE         DATE PRIMARY KEY UNIQUE NOT NULL,
                             SECID             TEXT NOT NULL,
                             OPEN              REAL NOT NULL,
                             LOW               REAL NOT NULL,
@@ -43,12 +43,13 @@ def create_tables(connection: sqlite3.Connection) -> None:
                             VOLUME            INTEGER NOT NULL,
                             LSTTRADE          DATE NOT NULL)'''
                            )
-        print('Таблицы в БД созданы')
+        print('Taблицы в БД созданы')
     except sqlite3.OperationalError as exception:
         print(f"Ошибка при создании БД: {exception}")
 
 def get_info_future(session, security):
     """Запрашивает у MOEX информацию по инструменту"""
+    # print(security)
     url = f'https://iss.moex.com/iss/securities/{security}.json'
     j = request_moex(session, url)
 
@@ -64,13 +65,8 @@ def get_info_future(session, security):
 
     return pd.Series([shortname, lsttrade])  # Гарантируем возврат 2 значений
 
-def get_minute_candles(session, ticker: str, start_date: date, from_str: str = None, till_str: str = None) -> pd.DataFrame:
+def get_minute_candles(session, ticker: str, start_date: date) -> pd.DataFrame:
     """Получает все минутные данные по фьючерсу за указанную дату с учетом пагинации"""
-    if from_str is None:
-        from_str = datetime.combine(start_date, time(0, 0)).isoformat()
-    if till_str is None:
-        till_str = datetime.combine(start_date, time(23, 59, 59)).isoformat()
-
     all_data = []
     start = 0
     page_size = 500  # MOEX ISS API возвращает до 500 записей за запрос
@@ -78,7 +74,7 @@ def get_minute_candles(session, ticker: str, start_date: date, from_str: str = N
     while True:
         url = (
             f'https://iss.moex.com/iss/engines/futures/markets/forts/securities/{ticker}/candles.json?'
-            f'interval=1&from={from_str}&till={till_str}'
+            f'interval=1&from={start_date.strftime("%Y-%m-%d")}&till={start_date.strftime("%Y-%m-%d")}'
             f'&start={start}'
         )
         print(f"Запрос минутных данных (start={start}): {url}")
@@ -95,6 +91,7 @@ def get_minute_candles(session, ticker: str, start_date: date, from_str: str = N
         all_data.extend(data)
         start += page_size
 
+        # Если получено меньше записей, чем page_size, это последняя страница
         if len(data) < page_size:
             break
 
@@ -104,6 +101,7 @@ def get_minute_candles(session, ticker: str, start_date: date, from_str: str = N
 
     df = pd.DataFrame(all_data)
 
+    # Переименовываем столбцы для соответствия таблице Futures
     df = df.rename(columns={
         'begin': 'TRADEDATE',
         'open': 'OPEN',
@@ -113,8 +111,14 @@ def get_minute_candles(session, ticker: str, start_date: date, from_str: str = N
         'volume': 'VOLUME'
     })
 
+    # Добавляем TRADEDATE и TRADETIME
     df['SECID'] = ticker
 
+    # # Удаляем лишние столбцы
+    # required_columns = ['TRADEDATE', 'TRADETIME', 'SECID', 'OPEN', 'LOW', 'HIGH', 'CLOSE', 'VOLUME', 'LSTTRADE']
+    # df = df.drop(columns=[col for col in df.columns if col not in required_columns], errors='ignore')
+
+    # Удаляем строки с NaN в критических полях
     df = df.dropna(subset=['OPEN', 'LOW', 'HIGH', 'CLOSE', 'VOLUME'])
     print(df.to_string(max_rows=6, max_cols=18), '\n')
 
@@ -141,30 +145,31 @@ def get_future_date_results(
         connection: sqlite3.Connection,
         cursor: sqlite3.Cursor) -> None:
     """Получает данные по фьючерсам с MOEX ISS API и сохраняет их в базу данных."""
-    today_date = datetime.now().date()  # Текущая дата
-    while start_date <= today_date:
-        date_str = start_date.strftime('%Y-%m-%d')
-        # Проверяем количество записей за дату
-        cursor.execute("SELECT COUNT(*) FROM Futures WHERE DATE(TRADEDATE) = ?", (date_str,))
-        count = cursor.fetchone()[0]
+    today_date = datetime.now().date()  # Текущая дата и время
+    while start_date <= today_date:  # Пока start_date меньше текущей даты
+        # Проверяем наличие даты в поле TRADEDATE
+        query = "SELECT 1 FROM Futures WHERE TRADEDATE = ? LIMIT 1"
+        cursor.execute(query, (start_date.strftime('%Y-%m-%d'),))
+        result = cursor.fetchone()
 
-        if count == 0:
-            # Нет данных, запрашиваем ежедневные данные для определения тикера
-            request_url = (
+        # Нет записей с такой датой в БД, запрашиваем данные с MOEX ISS API
+        if result is None:
+            request_url = (  # Формируем URL запроса к MOEX ISS API всех фьючерсов на дату start_date
                 f'https://iss.moex.com/iss/history/engines/futures/markets/forts/securities.json?'
-                f'date={date_str}&assetcode={ticker}'
+                f'date={start_date.strftime("%Y-%m-%d")}&assetcode={ticker}'
             )
+            # print(f'{request_url=}')  # Отладочная информация
 
             j = request_moex(session, request_url)
-            if j is None:
-                print(f"Ошибка получения данных для {start_date}. Прерываем процесс, чтобы повторить попытку в следующий запуск.")
-                break
-            elif 'history' not in j or not j['history'].get('data'):
+            if not j or 'history' not in j or not j['history'].get('data'):
                 print(f"Нет данных для {start_date}")
                 start_date += timedelta(days=1)
                 continue
-
-            data = [{k: r[i] for i, k in enumerate(j['history']['columns'])} for r in j['history']['data']]
+            # Данные по всем фьючерсам на дату start_date получены
+            data = [{k: r[i] for i, k in enumerate(j['history']['columns'])} for r in
+                    j['history']['data']]
+            df = pd.DataFrame(data)  # Преобразуем данные в DataFrame
+            # Очистка данных: удаляем ненужные строки с NaN
             df = pd.DataFrame(data).dropna(subset=['OPEN', 'LOW', 'HIGH', 'CLOSE'])
             if len(df) == 0:
                 start_date += timedelta(days=1)
@@ -173,54 +178,23 @@ def get_future_date_results(
             df[['SHORTNAME', 'LSTTRADE']] = df.apply(
                 lambda x: get_info_future(session, x['SECID']), axis=1, result_type='expand'
             )
-            df["LSTTRADE"] = pd.to_datetime(df["LSTTRADE"], errors='coerce').dt.date.fillna('2130-01-01')
+            df["LSTTRADE"] = pd.to_datetime(df["LSTTRADE"], errors='coerce').dt.date.fillna(
+                '2130-01-01')
             df = df[df['LSTTRADE'] > start_date].dropna(subset=['OPEN', 'LOW', 'HIGH', 'CLOSE'])
             df = df[df['LSTTRADE'] == df['LSTTRADE'].min()].reset_index(drop=True)
             df = df.drop(columns=[
                 'OPENPOSITIONVALUE', 'VALUE', 'SETTLEPRICE', 'SWAPRATE', 'WAPRICE',
                 'SETTLEPRICEDAY', 'NUMTRADES', 'SHORTNAME', 'CHANGE', 'QTY'
             ], errors='ignore')
+            # print(df.to_string(max_rows=20, max_cols=30), '\n')
 
-            current_ticker = df.loc[0, 'SECID']
-            lasttrade = df.loc[0, 'LSTTRADE']
+            current_ticker = df.loc[0, 'SECID']  # Получаем текущий тикер из DataFrame
+            lasttrade = df.loc[0, 'LSTTRADE']  # Получаем дату последней торговли
 
-            # Получаем минутные данные
+            # Получаем минутные данные для текущего тикера
             minute_df = get_minute_candles(session, current_ticker, start_date)
-            minute_df['LSTTRADE'] = lasttrade
-            if not minute_df.empty:
-                save_to_db(minute_df, connection, cursor)
-
-        else:
-            # Данные есть, проверяем полноту
-            cursor.execute("SELECT MAX(TRADEDATE) FROM Futures WHERE DATE(TRADEDATE) = ?", (date_str,))
-            max_time_str = cursor.fetchone()[0]
-            max_dt = datetime.strptime(max_time_str, '%Y-%m-%d %H:%M:%S')
-
-            threshold_time = time(23, 49, 0)
-            is_today = start_date == today_date
-
-            if not is_today and max_dt.time() >= threshold_time:
-                print(f"Данные за {start_date} полные, пропускаем")
-                start_date += timedelta(days=1)
-                continue
-
-            # Неполные данные или сегодняшний день, докачиваем
-            cursor.execute("SELECT SECID, LSTTRADE FROM Futures WHERE DATE(TRADEDATE) = ? LIMIT 1", (date_str,))
-            row = cursor.fetchone()
-            current_ticker = row[0]
-            lasttrade = datetime.strptime(row[1], '%Y-%m-%d').date() if isinstance(row[1], str) else row[1]
-
-            from_dt = max_dt + timedelta(minutes=1)
-            from_str = from_dt.isoformat()
-
-            if is_today:
-                till_dt = datetime.now()
-            else:
-                till_dt = datetime.combine(start_date, time(23, 59, 59))
-            till_str = till_dt.isoformat()
-
-            minute_df = get_minute_candles(session, current_ticker, start_date, from_str, till_str)
-            minute_df['LSTTRADE'] = lasttrade
+            minute_df['LSTTRADE'] = lasttrade  # Добавляем дату последней торговли
+            # Если минутные данные не пустые, сохраняем их в БД
             if not minute_df.empty:
                 save_to_db(minute_df, connection, cursor)
 
@@ -254,13 +228,19 @@ def main(
         exists_rows = cursor.fetchone()[0]
         # Если таблица Futures не пустая
         if exists_rows:
-            # Находим максимальную дату
+            # Находим максимальную дату (без времени)
             cursor.execute("SELECT MAX(DATE(TRADEDATE)) FROM Futures")
             max_trade_date = cursor.fetchone()[0]
             if max_trade_date:
-                # Устанавливаем start_date на максимальную дату для проверки полноты
-                start_date = datetime.strptime(max_trade_date, "%Y-%m-%d").date()
-                print(f"Начальная дата для загрузки данных: {start_date}")
+                # Удаляем все записи с максимальной датой
+                cursor.execute("DELETE FROM Futures WHERE DATE(TRADEDATE) = ?",
+                               (max_trade_date,))
+                connection.commit()
+                print(f"Удалены записи с датой: {max_trade_date}")
+
+            # Меняем стартовую дату на удаленную дату
+            start_date = datetime.strptime(max_trade_date, "%Y-%m-%d").date()
+            print(f"Начальная дата для загрузки данных: {start_date}")
 
         with requests.Session() as session:
             get_future_date_results(session, start_date, ticker, connection, cursor)
