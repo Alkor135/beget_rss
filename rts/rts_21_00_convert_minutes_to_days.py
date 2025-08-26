@@ -261,8 +261,7 @@ def delete_latest_record(connection: sqlite3.Connection, cursor) -> None:
 
 def main(
         db_path_minutes: Path = path_db_minutes,
-        path_db_day: Path = path_db_day
-) -> None:
+        path_db_day: Path = path_db_day) -> None:
     """Главная функция для конвертации минутных котировок в дневные."""
     try:
         # Подключение к базе данных с минутными котировками
