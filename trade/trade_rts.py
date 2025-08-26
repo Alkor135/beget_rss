@@ -5,6 +5,7 @@ import logging  # Выводим лог на консоль и в файл
 import datetime
 import itertools  # Итератор для уникальных номеров транзакций
 from pathlib import Path
+from time import sleep  # Задержка в секундах перед выполнением операций
 
 from QuikPy import QuikPy
 
@@ -26,7 +27,9 @@ def on_trans_reply(data):
 
 # Генерация имени лог-файла с временной меткой запуска
 log_timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-log_filename = f'transactions_{log_timestamp}.log'
+log_filename = Path(
+    fr'C:\Users\Alkor\PycharmProjects\beget_rss\trade\trade_rts_{log_timestamp}.log'
+)
 
 # Настройка логирования
 logger = logging.getLogger('QuikPy.Transactions')
@@ -226,6 +229,6 @@ elif direction == 'up':
             f'Направление открытой позиции совпадает. {current_pos=}, {direction=}. '
             f'Никаких действий не предпринимаем.'
         )
-
+sleep(10)  # Ждем 10 секунд
 # Закрываем соединение для запросов и поток обработки функций обратного вызова
 qp.close_connection_and_thread()
