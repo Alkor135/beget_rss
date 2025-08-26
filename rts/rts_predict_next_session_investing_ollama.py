@@ -23,7 +23,7 @@ cache_file = Path(fr'C:\Users\Alkor\PycharmProjects\beget_rss\{ticker_lc}\{ticke
 model_name = "bge-m3"
 url_ai = "http://localhost:11434/api/embeddings"
 min_prev_files = 4   # Минимальное количество предыдущих файлов для предсказания
-max_prev_files = 8  # Максимальное количество предыдущих файлов для предсказания
+max_prev_files = 7  # Максимальное количество предыдущих файлов для предсказания
 # Папка для сохранения текстовых файлов
 output_dir = Path(fr'C:\Users\Alkor\gd\predict_ai\{ticker_lc}_investing_ollama')
 
@@ -115,31 +115,44 @@ def cache_is_valid(documents, cache_file):
     return True
 
 def cache_embeddings(documents, cache_file, model_name, url_ai):
-    """Вычисляет и кэширует эмбеддинги всех документов в pickle-файл."""
-    if cache_is_valid(documents, cache_file):
-        print(f"Загрузка кэша эмбеддингов из {cache_file}")
+    """Создание ембеддингов для новых и измененных файлов markdown"""
+    ef = OllamaEmbeddingFunction(model_name=model_name, url=url_ai)
+    current_files = {
+        doc.metadata['source']: (doc, hashlib.md5(doc.page_content.encode()).hexdigest()) for doc in documents
+    }
+
+    cache = []
+    if cache_file.exists():
         with open(cache_file, 'rb') as f:
             cache = pickle.load(f)
-        return cache
+        # Фильтр: оставляем только актуальные из кэша
+        cache = [item for item in cache if
+                 item['metadata']['source'] in current_files and item['id'] ==
+                 current_files[item['metadata']['source']][1]]
 
-    timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
-    print(f"{timestamp} - Вычисление эмбеддингов...")
-    ef = OllamaEmbeddingFunction(model_name=model_name, url=url_ai)
-    cache = []
-    for doc in documents:
-        embedding = ef([doc.page_content])[0]
-        cache.append({
-            'id': hashlib.md5(doc.page_content.encode()).hexdigest(),
-            'embedding': embedding,
-            'metadata': doc.metadata
-        })
-    with open(cache_file, 'wb') as f:
-        pickle.dump(cache, f)
-    timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
-    print(f"{timestamp} - Эмбеддинги сохранены в {cache_file}")
+    # Новые/изменённые docs
+    cached_sources = {item['metadata']['source'] for item in cache}
+    new_docs = [doc for doc in documents if doc.metadata['source'] not in cached_sources]
+
+    if new_docs:
+        timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
+        print(f"{timestamp} - Вычисление эмбеддингов для {len(new_docs)} новых/изменённых файлов...")
+        contents = [doc.page_content for doc in new_docs]
+        embeddings = ef(contents)
+        for i, doc in enumerate(new_docs):
+            cache.append({
+                'id': hashlib.md5(doc.page_content.encode()).hexdigest(),
+                'embedding': embeddings[i],
+                'metadata': doc.metadata
+            })
+        with open(cache_file, 'wb') as f:
+            pickle.dump(cache, f)
+        timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
+        print(f"{timestamp} - Кэш обновлён в {cache_file}")
+
     return cache
 
-def main(max_prev_files: int = 8):
+def main(max_prev_files: int = 7):
     """Предсказывает направление next_bar для документа с next_bar='None'."""
     # Загрузка markdown-файлов
     documents = load_markdown_files(md_path)
@@ -207,7 +220,7 @@ def main(max_prev_files: int = 8):
                 closest_similarity, closest_metadata = similarities[0]
                 predicted_next_bar = closest_metadata['next_bar']
 
-                print(f"\nПредсказание для даты {none_date}:")
+                print(f"\nПредсказание для даты {none_date} {min_prev_files}/{max_prev_files}:")
                 print(f"Предсказанное направление: {predicted_next_bar}")
                 print(f"Процент сходства: {closest_similarity:.2f}%")
                 print("Метаданные ближайшего похожего документа:")
@@ -217,6 +230,8 @@ def main(max_prev_files: int = 8):
                 print("Нет похожих документов для предсказания.")
 
     print(f"Результаты сохранены в {output_file}")
+    print(f"\nПредсказание для даты {none_date}:")
+    print(f"Предсказанное направление для {min_prev_files}/{max_prev_files}: {predicted_next_bar}")
 
 if __name__ == '__main__':
     main(max_prev_files=max_prev_files)
