@@ -71,8 +71,7 @@ def save_titles_to_markdown(
         file_path: Path,
         next_bar: str,
         date_min: str,
-        date_max: str
-    ) -> None:
+        date_max: str) -> None:
     """
     Сохраняет заголовки новостей в markdown-файл с метаданными.
     """
@@ -121,9 +120,8 @@ def main(
         path_db_quote: Path = path_db_quote,
         db_news_dir: Path = db_news_dir,
         md_news_dir: Path = md_news_dir,
-        num_mds: int = 30,
-        num_dbs: int = 3
-) -> None:
+        num_mds: int = 100,
+        num_dbs: int = 3) -> None:
     """
     Основная функция: читает котировки и новости из последних num_dbs файлов БД,
     удаляет самый последний markdown-файл, формирует и сохраняет не более num_mds markdown-файлов
