@@ -47,8 +47,8 @@ def run_python_scripts():
         (download_minutes, "rts_download_minutes_to_db", {}),
         (convert_to_days, "rts_21_00_convert_minutes_to_days", {}),
         (convert_to_md, "rts_21_00_db_investing_month_to_md", {"num_mds": 20, "num_dbs": 2}),
-        (predict_session, "rts_predict_next_session_investing_ollama", {"max_prev_files": 8}),
-        (backtest, "rts_backtesting_investing_ollama", {"max_prev_files": 8}),
+        (predict_session, "rts_predict_next_session_investing_ollama", {"max_prev_files": 7}),
+        (backtest, "rts_backtesting_investing_ollama", {"max_prev_files": 7}),
         (backtest_multi, "rts_backtest_multi_max_investing", {})
     ]:
         timestamp = get_timestamp()
