@@ -16,7 +16,6 @@ import aiohttp
 import asyncio
 from contextlib import redirect_stdout
 import datetime
-import json
 
 # Параметры
 ticker_lc = 'rts'
