@@ -144,12 +144,13 @@ def get_future_date_results(
     today_date = datetime.now().date()  # Текущая дата
     while start_date <= today_date:
         date_str = start_date.strftime('%Y-%m-%d')
-        # Проверяем количество записей за дату
+        # Проверяем количество записей в БД за дату
         cursor.execute("SELECT COUNT(*) FROM Futures WHERE DATE(TRADEDATE) = ?", (date_str,))
         count = cursor.fetchone()[0]
 
         if count == 0:
-            # Нет данных, запрашиваем ежедневные данные для определения тикера
+            # Нет минутных данных в БД, запрашиваем данные о торгуемых фьючерсах на дату
+            # За текущую дату торгуемые тикеры доступны после 19:05, после окончания основной сессии
             request_url = (
                 f'https://iss.moex.com/iss/history/engines/futures/markets/forts/securities.json?'
                 f'date={date_str}&assetcode={ticker}'
@@ -160,7 +161,7 @@ def get_future_date_results(
                 print(f"Ошибка получения данных для {start_date}. Прерываем процесс, чтобы повторить попытку в следующий запуск.")
                 break
             elif 'history' not in j or not j['history'].get('data'):
-                print(f"Нет данных для {start_date}")
+                print(f"Нет данных по торгуемым фьючерсам {ticker} для {start_date}")
                 start_date += timedelta(days=1)
                 continue
 
@@ -191,7 +192,7 @@ def get_future_date_results(
                 save_to_db(minute_df, connection, cursor)
 
         else:
-            # Данные есть, проверяем полноту
+            # Есть минутные данные за дату, проверяем полноту
             cursor.execute("SELECT MAX(TRADEDATE) FROM Futures WHERE DATE(TRADEDATE) = ?", (date_str,))
             max_time_str = cursor.fetchone()[0]
             max_dt = datetime.strptime(max_time_str, '%Y-%m-%d %H:%M:%S')
@@ -200,11 +201,11 @@ def get_future_date_results(
             is_today = start_date == today_date
 
             if not is_today and max_dt.time() >= threshold_time:
-                print(f"Данные за {start_date} полные, пропускаем")
+                print(f"Минутные данные за {start_date} полные, пропускаем дату {start_date}")
                 start_date += timedelta(days=1)
                 continue
 
-            # Неполные данные или сегодняшний день, докачиваем
+            # Неполные минутные данные или сегодняшний день (после 19:05), докачиваем
             cursor.execute("SELECT SECID, LSTTRADE FROM Futures WHERE DATE(TRADEDATE) = ? LIMIT 1", (date_str,))
             row = cursor.fetchone()
             current_ticker = row[0]
@@ -229,8 +230,7 @@ def get_future_date_results(
 def main(
         ticker: str = ticker,
         path_db: Path = path_db,
-        start_date: date = start_date
-) -> None:
+        start_date: date = start_date) -> None:
     """
     Основная функция: подключается к базе данных, создает таблицы и загружает данные по фьючерсам.
     """
@@ -260,7 +260,7 @@ def main(
             if max_trade_date:
                 # Устанавливаем start_date на максимальную дату для проверки полноты
                 start_date = datetime.strptime(max_trade_date, "%Y-%m-%d").date()
-                print(f"Начальная дата для загрузки данных: {start_date}")
+                print(f"Начальная дата для загрузки минутных данных: {start_date}")
 
         with requests.Session() as session:
             get_future_date_results(session, start_date, ticker, connection, cursor)
@@ -276,7 +276,7 @@ def main(
         # Закрываем курсор и соединение
         cursor.close()
         connection.close()
-        print("Соединение с базой данных закрыто.")
+        print(f"Соединение с минутной БД {path_db} по фьючерсам {ticker} закрыто.")
 
 
 if __name__ == '__main__':
