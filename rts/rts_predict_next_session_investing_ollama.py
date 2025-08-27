@@ -1,10 +1,12 @@
 """
 Скрипт для предсказания направления следующей свечи (next_bar) на основе markdown-файлов с новостями.
-Кэширует эмбеддинги в pickle-файл, обновляет только новые/изменённые файлы.
+Кэширует ембеддинги в pickle-файл, обновляет только новые/изменённые файлы.
 Ограничивает количество предыдущих файлов параметрами min_prev_files и max_prev_files.
 Предсказывает направление для документа с next_bar='None'.
 Все выводы сохраняются в текстовый файл в папке predict_ollama с именем {none_date}.txt.
 Логи пишутся в файл и в консоль, файл лога перезаписывается при каждом запуске.
+Ембеддинги создает для новых и измененных файлов markdown, для остальных файлов, берет из кэша.
+Передача файлов для ембеддинга батчами по 1 файлу.
 """
 
 from pathlib import Path
@@ -165,14 +167,19 @@ def print_prediction(none_date, prev_files, predicted_next_bar, closest_similari
 
 def main(max_prev_files: int = 7):
     """Предсказывает направление next_bar для документа с next_bar='None'."""
+    # Загрузка markdown-файлов
     documents = load_markdown_files(md_path)
     if len(documents) < min_prev_files + 1:
         logger.error(f"Недостаточно файлов: {len(documents)}. Требуется минимум {min_prev_files + 1}.")
         exit(1)
 
+    # Кэширование эмбеддингов
     cache = cache_embeddings(documents, cache_file, model_name, url_ai)
+
+    # Создание папки для вывода, если она не существует
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    # Поиск документа с next_bar="None"
     none_doc = next((doc for doc in documents if doc.metadata['next_bar'] == "None"), None)
     if not none_doc:
         logger.error("Документ с next_bar='None' не найден.")
@@ -195,21 +202,31 @@ def main(max_prev_files: int = 7):
         logger.error(f"Некорректный формат даты: {none_date}")
         return
 
+    # prev_cache = sorted(
+    #     [item for item in cache if
+    #      item['metadata']['next_bar'] != "None" and
+    #      datetime.datetime.strptime(item['metadata']['date'], '%Y-%m-%d') < none_date_dt],
+    #     key=lambda x: datetime.datetime.strptime(x['metadata']['date'], '%Y-%m-%d'),
+    #     reverse=True
+    # )[:max_prev_files]
+
+    # Получение предыдущих документов из кэша, ближайших по дате
     prev_cache = sorted(
         [item for item in cache if
-         item['metadata']['next_bar'] != "None" and
-         datetime.datetime.strptime(item['metadata']['date'], '%Y-%m-%d') < none_date_dt],
-        key=lambda x: datetime.datetime.strptime(x['metadata']['date'], '%Y-%m-%d'),
-        reverse=True
-    )[:max_prev_files]
+         item['metadata']['next_bar'] != "None" and item['metadata']['date'] < none_date],
+        key=lambda x: x['metadata']['date'], reverse=True
+    )[:max_prev_files]  # Ограничиваем max_prev_files ближайшими датами
 
     if len(prev_cache) < min_prev_files:
         logger.error(f"Недостаточно предыдущих документов для даты {none_date}: {len(prev_cache)}")
         return
 
+    # Вывод списка файлов для сравнения
     prev_files = [item['metadata']['source'] for item in prev_cache]
+    # Вычисление сходств
     similarities = [(cosine_similarity(none_embedding, item['embedding']) * 100, item['metadata'])
                    for item in prev_cache]
+    # Сортировка по убыванию сходства
     similarities.sort(key=lambda x: x[0], reverse=True)
 
     try:
