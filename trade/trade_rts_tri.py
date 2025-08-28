@@ -1,12 +1,13 @@
 from pathlib import Path
 from datetime import datetime, date
+import re
 
 # Параметры
 # Путь к папке с файлами прогнозов
 predict_path = Path(r"C:\Users\Alkor\gd\predict_ai\rts_investing_ollama")
 # Путь к папке с файлами trade
 trade_path = Path(r"C:\QUIK_VTB_2025_ЕБС\algotrade")
-trade_path.mkdir(parents=True, exist_ok=True)
+trade_path.mkdir(parents=True, exist_ok=True)  # Создание папки, если не существует
 today = date.today()  # Получение текущей даты
 # Формирование имени файла для текущей даты (формат: ГГГГ-ММ-ДД.txt)
 current_filename = today.strftime("%Y-%m-%d") + ".txt"
@@ -77,28 +78,51 @@ if current_dir is None or prev_dir is None:
     print("Не удалось найти предсказанное направление в одном или обоих файлах.")
     exit()
 
+# Функция для получения следующего TRANS_ID
+def get_next_trans_id(trade_filepath):
+    trans_id = 1  # Значение по умолчанию
+    if trade_filepath.exists():
+        try:
+            with trade_filepath.open('r', encoding='cp1251') as f:
+                content = f.read()
+                # Поиск всех значений TRANS_ID
+                trans_ids = re.findall(r'TRANS_ID=(\d+);', content)
+                if trans_ids:
+                    # Преобразование в числа и поиск максимума
+                    trans_id = max(int(tid) for tid in trans_ids) + 1
+        except UnicodeDecodeError:
+            print(f"Не удалось прочитать файл {trade_filepath} для определения TRANS_ID.")
+    return trans_id
+
 # Проверка условий для записи торгового сигнала
 trade_content = None
+# Формат текущей даты для поля Дата экспирации (ГГГГММДД)
+expiry_date = today.strftime("%Y%m%d")
+trade_filepath = trade_path / 'input.tri'
+trans_id = get_next_trans_id(trade_filepath)
 if current_dir == 'down' and prev_dir == 'up':
     trade_content = (
-        'TRANS_ID=2;CLASSCODE=SPBFUT;ACTION=Ввод заявки;Торговый счет=SPBFUT192yc;'
-        'К/П=Продажа;Тип=Рыночная;Класс=SPBFUT;Инструмент=RIU5;Цена=0;Количество=2;'
-        'Условие исполнения=Поставить в очередь;Комментарий=SPBFUT192yc//TRI;'
-        'Переносить заявку=Нет;Дата экспирации=20250828;Код внешнего пользователя=;\n')
+        f'TRANS_ID={trans_id};CLASSCODE=SPBFUT;ACTION=Ввод заявки;Торговый счет=SPBFUT192yc;'
+        f'К/П=Продажа;Тип=Рыночная;Класс=SPBFUT;Инструмент=RIU5;Цена=0;Количество=2;'
+        f'Условие исполнения=Поставить в очередь;Комментарий=SPBFUT192yc//TRI;'
+        f'Переносить заявку=Нет;Дата экспирации={expiry_date};Код внешнего пользователя=;\n')
 elif current_dir == 'up' and prev_dir == 'down':
     trade_content = (
-        'TRANS_ID=1;CLASSCODE=SPBFUT;ACTION=Ввод заявки;Торговый счет=SPBFUT192yc;'
-        'К/П=Покупка;Тип=Рыночная;Класс=SPBFUT;Инструмент=RIU5;Цена=0;Количество=2;'
-        'Условие исполнения=Поставить в очередь;Комментарий=SPBFUT192yc//TRI;'
-        'Переносить заявку=Нет;Дата экспирации=20250828;Код внешнего пользователя=;\n')
+        f'TRANS_ID={trans_id};CLASSCODE=SPBFUT;ACTION=Ввод заявки;Торговый счет=SPBFUT192yc;'
+        f'К/П=Покупка;Тип=Рыночная;Класс=SPBFUT;Инструмент=RIU5;Цена=0;Количество=2;'
+        f'Условие исполнения=Поставить в очередь;Комментарий=SPBFUT192yc//TRI;'
+        f'Переносить заявку=Нет;Дата экспирации={expiry_date};Код внешнего пользователя=;\n')
 
 # Запись результата в файл trade, если условия выполнены
 if trade_content:
-    trade_filepath = trade_path / 'input.tri'
-    # Создание или перезапись файла trade
-    with trade_filepath.open('w', encoding='cp1251') as f:
+    # Получение следующего TRANS_ID
+    trans_id = get_next_trans_id(trade_filepath)
+    # Форматирование строки с актуальным TRANS_ID
+    trade_content = trade_content.format(trans_id=trans_id)
+    # Добавление записи в файл trade в кодировке cp1251
+    with trade_filepath.open('a', encoding='cp1251') as f:
         f.write(trade_content)
     print(f'{current_dir=}, {prev_dir=}')
-    print(f"Записан сигнал '{trade_content}' в файл {trade_filepath}.")
+    print(f"Добавлен сигнал с TRANS_ID={trans_id} в файл {trade_filepath}.")
 else:
     print("Условия для сигналов BUY или SELL не выполнены.")
