@@ -5,7 +5,7 @@ from datetime import datetime, date
 # Путь к папке с файлами прогнозов
 predict_path = Path(r"C:\Users\Alkor\gd\predict_ai\rts_investing_ollama")
 # Путь к папке с файлами trade
-trade_path = Path(r"C:\Users\Alkor\PycharmProjects\beget_rss\trade")
+trade_path = Path(r"C:\QUIK_VTB_2025_ЕБС\algotrade")
 trade_path.mkdir(parents=True, exist_ok=True)
 today = date.today()  # Получение текущей даты
 # Формирование имени файла для текущей даты (формат: ГГГГ-ММ-ДД.txt)
@@ -94,7 +94,7 @@ elif current_dir == 'up' and prev_dir == 'down':
 
 # Запись результата в файл trade, если условия выполнены
 if trade_content:
-    trade_filepath = trade_path / 'trade.tri'
+    trade_filepath = trade_path / 'input.tri'
     # Создание или перезапись файла trade
     with trade_filepath.open('w', encoding='cp1251') as f:
         f.write(trade_content)
