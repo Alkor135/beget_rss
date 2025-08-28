@@ -300,7 +300,7 @@ def main(
         print("Все соединения с базами данных закрыты.")
 
     except sqlite3.Error as err:
-        print(f"Ошибка при работе с базой данных: {err}")
+        print(f"Ошибка при работе с базами данных: {err}")
 
 if __name__ == '__main__':
     main(path_db_minutes, path_db_day)
