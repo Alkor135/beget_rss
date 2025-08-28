@@ -161,7 +161,7 @@ def get_future_date_results(
                 print(f"Ошибка получения данных для {start_date}. Прерываем процесс, чтобы повторить попытку в следующий запуск.")
                 break
             elif 'history' not in j or not j['history'].get('data'):
-                print(f"Нет данных по торгуемым фьючерсам {ticker} для {start_date}")
+                print(f"Нет данных по торгуемым фьючерсам {ticker} за {start_date}")
                 start_date += timedelta(days=1)
                 continue
 
