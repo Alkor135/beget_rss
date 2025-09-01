@@ -7,14 +7,35 @@ import sqlite3
 from datetime import datetime, timedelta, date, time
 import requests
 import pandas as pd
+import logging
 
 
 # Параметры
 ticker: str = 'RTS'  # Тикер фьючерса
+ticker_lc: str = 'rts'  # Тикер фьючерса в нижнем регистре
 # Путь к базе данных с минутными барами фьючерсов
 path_db: Path = Path(rf'C:\Users\Alkor\gd\data_quote_db\{ticker}_futures_minute_2025.db')
 # Начальная дата для загрузки данных
 start_date: date = datetime.strptime('2025-06-02', "%Y-%m-%d").date()
+
+# Настройка логирования: вывод в консоль и в файл, файл перезаписывается
+log_file = Path(
+    fr'C:\Users\Alkor\gd\predict_ai\{ticker_lc}_investing_ollama\log\{ticker_lc}_download_minutes_to_db.txt')
+log_file.parent.mkdir(parents=True, exist_ok=True)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+# Удаляем существующие обработчики, чтобы избежать дублирования
+logger.handlers = []
+# logger = logging.getLogger('Predict.NextSessionInvesting')
+logger.addHandler(logging.FileHandler(log_file))
+# Обработчик для консоли
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+logger.addHandler(console_handler)
+# Обработчик для файла (перезаписывается при каждом запуске)
+file_handler = logging.FileHandler(log_file, mode='w', encoding='utf-8')
+file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+logger.addHandler(file_handler)
 
 
 def request_moex(session, url, retries = 5, timeout = 10):
@@ -25,7 +46,7 @@ def request_moex(session, url, retries = 5, timeout = 10):
             response.raise_for_status()
             return response.json()
         except requests.RequestException as e:
-            print(f"Ошибка запроса {url} (попытка {attempt + 1}): {e}")
+            logger.error(f"Ошибка запроса {url} (попытка {attempt + 1}): {e}")
             if attempt == retries - 1:
                 return None
 
@@ -43,9 +64,9 @@ def create_tables(connection: sqlite3.Connection) -> None:
                             VOLUME            INTEGER NOT NULL,
                             LSTTRADE          DATE NOT NULL)'''
                            )
-        print('Таблицы в БД созданы')
+        logger.info('Таблицы в БД созданы')
     except sqlite3.OperationalError as exception:
-        print(f"Ошибка при создании БД: {exception}")
+        logger.error(f"Ошибка при создании БД: {exception}")
 
 def get_info_future(session, security):
     """Запрашивает у MOEX информацию по инструменту"""
@@ -81,11 +102,11 @@ def get_minute_candles(session, ticker: str, start_date: date, from_str: str = N
             f'interval=1&from={from_str}&till={till_str}'
             f'&start={start}'
         )
-        print(f"Запрос минутных данных (start={start}): {url}")
+        logger.info(f"Запрос минутных данных (start={start}): {url}")
 
         j = request_moex(session, url)
         if not j or 'candles' not in j or not j['candles'].get('data'):
-            print(f"Нет минутных данных для {ticker} на {start_date}")
+            logger.error(f"Нет минутных данных для {ticker} на {start_date}")
             break
 
         data = [{k: r[i] for i, k in enumerate(j['candles']['columns'])} for r in j['candles']['data']]
@@ -99,7 +120,7 @@ def get_minute_candles(session, ticker: str, start_date: date, from_str: str = N
             break
 
     if not all_data:
-        print(f"Нет данных для {ticker} на {start_date}")
+        logger.error(f"Нет данных для {ticker} на {start_date}")
         return pd.DataFrame()
 
     df = pd.DataFrame(all_data)
@@ -116,7 +137,7 @@ def get_minute_candles(session, ticker: str, start_date: date, from_str: str = N
     df['SECID'] = ticker
 
     df = df.dropna(subset=['OPEN', 'LOW', 'HIGH', 'CLOSE', 'VOLUME'])
-    print(df.to_string(max_rows=6, max_cols=18), '\n')
+    logger.info(df.to_string(max_rows=6, max_cols=18), '\n')
 
     return df[['TRADEDATE', 'SECID', 'OPEN', 'LOW', 'HIGH', 'CLOSE', 'VOLUME']].reset_index(drop=True)
 
@@ -124,15 +145,15 @@ def get_minute_candles(session, ticker: str, start_date: date, from_str: str = N
 def save_to_db(df: pd.DataFrame, connection: sqlite3.Connection, cursor: sqlite3.Cursor) -> None:
     """Сохраняет DataFrame в таблицу Futures"""
     if df.empty:
-        print("DataFrame пуст, данные не сохранены")
+        logger.error("DataFrame пуст, данные не сохранены")
         return
 
     try:
         with connection:
             df.to_sql('Futures', connection, if_exists='append', index=False)
-        print(f"Сохранено {len(df)} записей в таблицу Futures")
+        logger.info(f"Сохранено {len(df)} записей в таблицу Futures")
     except sqlite3.Error as e:
-        print(f"Ошибка при сохранении данных в БД: {e}")
+        logger.error(f"Ошибка при сохранении данных в БД: {e}")
 
 def get_future_date_results(
         session,
@@ -158,10 +179,10 @@ def get_future_date_results(
 
             j = request_moex(session, request_url)
             if j is None:
-                print(f"Ошибка получения данных для {start_date}. Прерываем процесс, чтобы повторить попытку в следующий запуск.")
+                logger.error(f"Ошибка получения данных для {start_date}. Прерываем процесс, чтобы повторить попытку в следующий запуск.")
                 break
             elif 'history' not in j or not j['history'].get('data'):
-                print(f"Нет данных по торгуемым фьючерсам {ticker} за {start_date}")
+                logger.info(f"Нет данных по торгуемым фьючерсам {ticker} за {start_date}")
                 start_date += timedelta(days=1)
                 continue
 
@@ -201,7 +222,7 @@ def get_future_date_results(
             is_today = start_date == today_date
 
             if not is_today and max_dt.time() >= threshold_time:
-                print(f"Минутные данные за {start_date} полные, пропускаем дату {start_date}")
+                logger.info(f"Минутные данные за {start_date} полные, пропускаем дату {start_date}")
                 start_date += timedelta(days=1)
                 continue
 
@@ -260,23 +281,23 @@ def main(
             if max_trade_date:
                 # Устанавливаем start_date на максимальную дату для проверки полноты
                 start_date = datetime.strptime(max_trade_date, "%Y-%m-%d").date()
-                print(f"Начальная дата для загрузки минутных данных: {start_date}")
+                logger.info(f"Начальная дата для загрузки минутных данных: {start_date}")
 
         with requests.Session() as session:
             get_future_date_results(session, start_date, ticker, connection, cursor)
 
     except Exception as e:
-        print(f"Ошибка в main: {e}")
+        logger.error(f"Ошибка в main: {e}")
 
     finally:
         # Выполняем команду VACUUM
         cursor.execute("VACUUM")
-        print("VACUUM выполнен: база данных оптимизирована")
+        logger.info("VACUUM выполнен: база данных оптимизирована")
 
         # Закрываем курсор и соединение
         cursor.close()
         connection.close()
-        print(f"Соединение с минутной БД {path_db} по фьючерсам {ticker} закрыто.")
+        logger.info(f"Соединение с минутной БД {path_db} по фьючерсам {ticker} закрыто.")
 
 
 if __name__ == '__main__':
