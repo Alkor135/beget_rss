@@ -37,7 +37,6 @@ file_handler = logging.FileHandler(log_file, mode='w', encoding='utf-8')
 file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 logger.addHandler(file_handler)
 
-
 def request_moex(session, url, retries = 5, timeout = 10):
     """Функция запроса данных с повторными попытками"""
     for attempt in range(retries):
@@ -140,7 +139,6 @@ def get_minute_candles(session, ticker: str, start_date: date, from_str: str = N
     logger.info(df.to_string(max_rows=6, max_cols=18), '\n')
 
     return df[['TRADEDATE', 'SECID', 'OPEN', 'LOW', 'HIGH', 'CLOSE', 'VOLUME']].reset_index(drop=True)
-
 
 def save_to_db(df: pd.DataFrame, connection: sqlite3.Connection, cursor: sqlite3.Cursor) -> None:
     """Сохраняет DataFrame в таблицу Futures"""
