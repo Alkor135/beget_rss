@@ -29,7 +29,7 @@ output_file = fr'C:\Users\Alkor\PycharmProjects\beget_rss\{ticker_lc}\{ticker_lc
 
 # Настройка логирования: вывод в консоль и в файл, файл перезаписывается
 log_file = Path(
-    fr'C:\Users\Alkor\gd\predict_ai\{ticker_lc}_investing_ollama\log\{ticker_lc}_backtesting_investing_ollama.txt')
+    fr'C:\Users\Alkor\gd\predict_ai\{ticker_lc}_investing_ollama\log\{ticker_lc}_backtest_multi_max_investing.txt')
 log_file.parent.mkdir(parents=True, exist_ok=True)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
