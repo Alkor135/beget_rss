@@ -13,10 +13,11 @@ import yaml
 import sqlite3
 from langchain_core.documents import Document
 from chromadb.utils.embedding_functions import OllamaEmbeddingFunction
+import logging
 
 # Параметры
-ticker = 'RTS'
-ticker_lc = 'rts'
+ticker: str = 'RTS'  # Тикер фьючерса
+ticker_lc: str = 'rts'  # Тикер фьючерса в нижнем регистре
 md_path = Path(fr'C:\Users\Alkor\gd\md_{ticker_lc}_investing')
 cache_file = Path(fr'C:\Users\Alkor\PycharmProjects\beget_rss\{ticker_lc}\{ticker_lc}_embeddings_investing_ollama.pkl')
 path_db_quote = Path(fr'C:\Users\Alkor\gd\data_quote_db\{ticker}_futures_day_2025_21-00.db')
@@ -25,6 +26,25 @@ url_ai = "http://localhost:11434/api/embeddings"
 min_prev_files = 4   # Минимальное количество предыдущих файлов для предсказаний
 # Итоговый XLSX файл
 output_file = fr'C:\Users\Alkor\PycharmProjects\beget_rss\{ticker_lc}\{ticker_lc}_backtest_results_multi_max_investing.xlsx'
+
+# Настройка логирования: вывод в консоль и в файл, файл перезаписывается
+log_file = Path(
+    fr'C:\Users\Alkor\gd\predict_ai\{ticker_lc}_investing_ollama\log\{ticker_lc}_backtesting_investing_ollama.txt')
+log_file.parent.mkdir(parents=True, exist_ok=True)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+# Удаляем существующие обработчики, чтобы избежать дублирования
+logger.handlers = []
+# logger = logging.getLogger('Predict.NextSessionInvesting')
+logger.addHandler(logging.FileHandler(log_file))
+# Обработчик для консоли
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+logger.addHandler(console_handler)
+# Обработчик для файла (перезаписывается при каждом запуске)
+file_handler = logging.FileHandler(log_file, mode='w', encoding='utf-8')
+file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+logger.addHandler(file_handler)
 
 def cosine_similarity(vec1, vec2):
     """Вычисляет косинусное сходство между двумя векторами."""
@@ -91,14 +111,14 @@ def cache_is_valid(documents, cache_file):
 
     # Проверяем, совпадают ли наборы файлов
     if current_files != cache_files:
-        print("Кэш устарел: изменился набор markdown-файлов.")
+        logger.info("Кэш устарел: изменился набор markdown-файлов.")
         return False
 
     # Проверяем, не изменились ли файлы
     for doc in documents:
         file_path = md_path / doc.metadata['source']
         if file_path.stat().st_mtime > cache_mtime:
-            print(f"Кэш устарел: файл {file_path.name} был изменён.")
+            logger.info(f"Кэш устарел: файл {file_path.name} был изменён.")
             return False
 
     return True
@@ -106,12 +126,12 @@ def cache_is_valid(documents, cache_file):
 def cache_embeddings(documents, cache_file, model_name, url_ai):
     """Вычисляет и кэширует эмбеддинги всех документов в pickle-файл."""
     if cache_is_valid(documents, cache_file):
-        print(f"Загрузка кэша эмбеддингов из {cache_file}")
+        logger.info(f"Загрузка кэша эмбеддингов из {cache_file}")
         with open(cache_file, 'rb') as f:
             cache = pickle.load(f)
         return cache
 
-    print("Вычисление эмбеддингов...")
+    logger.info("Вычисление эмбеддингов...")
     ef = OllamaEmbeddingFunction(model_name=model_name, url=url_ai)
     cache = []
     for doc in documents:
@@ -123,7 +143,7 @@ def cache_embeddings(documents, cache_file, model_name, url_ai):
         })
     with open(cache_file, 'wb') as f:
         pickle.dump(cache, f)
-    print(f"Эмбеддинги сохранены в {cache_file}")
+    logger.info(f"Эмбеддинги сохранены в {cache_file}")
     return cache
 
 def backtest_predictions(documents, cache, quotes_df, max_prev_files):
@@ -195,14 +215,14 @@ def backtest_predictions(documents, cache, quotes_df, max_prev_files):
 def main():
     # Загрузка котировок
     if not path_db_quote.exists():
-        print(f"Ошибка: Файл базы данных котировок не найден: {path_db_quote}")
+        logger.error(f"Ошибка: Файл базы данных котировок не найден: {path_db_quote}")
         exit(1)
     quotes_df = load_quotes(path_db_quote)
 
     # Загрузка markdown-файлов
     documents = load_markdown_files(md_path)
     if len(documents) < min_prev_files + 1:
-        print(f"Недостаточно файлов: {len(documents)}. Требуется минимум {min_prev_files + 1}.")
+        logger.error(f"Недостаточно файлов: {len(documents)}. Требуется минимум {min_prev_files + 1}.")
         exit(1)
 
     # Кэширование эмбеддингов (один раз)
@@ -213,7 +233,7 @@ def main():
 
     # Диапазон max_prev_files от 10 до 30
     for max_prev in range(5, 31):
-        print(f"Проводим backtest для max_prev_files = {max_prev}")
+        logger.info(f"Проводим backtest для max_prev_files = {max_prev}")
         results_df = backtest_predictions(documents, cache, quotes_df, max_prev)
         if not results_df.empty:
             results_df = results_df.rename(columns={'cumulative_next_bar_pips': f'max_{max_prev}'})
@@ -225,9 +245,9 @@ def main():
     # Сохранение в XLSX
     if not all_results.empty:
         all_results.to_excel(output_file, index=False, engine='openpyxl')
-        print(f"Результаты сохранены в {output_file}")
+        logger.info(f"Результаты сохранены в {output_file}")
     else:
-        print("Нет результатов для сохранения.")
+        logger.error("Нет результатов для сохранения.")
 
 if __name__ == '__main__':
     main()
