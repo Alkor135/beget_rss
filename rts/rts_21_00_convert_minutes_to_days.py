@@ -12,7 +12,6 @@ from pathlib import Path
 from datetime import datetime
 import logging
 
-
 # Параметры
 ticker: str = 'RTS'  # Тикер фьючерса
 ticker_lc: str = 'rts'  # Тикер фьючерса в нижнем регистре
