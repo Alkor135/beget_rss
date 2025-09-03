@@ -37,7 +37,6 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 # Удаляем существующие обработчики, чтобы избежать дублирования
 logger.handlers = []
-# logger = logging.getLogger('Predict.NextSessionInvesting')
 logger.addHandler(logging.FileHandler(log_file))
 # Обработчик для консоли
 console_handler = logging.StreamHandler()
