@@ -1,5 +1,9 @@
 """
 Скрипт скачивает минутные данные из MOEX ISS API и сохраняет их в базу данных SQLite.
+Если в базе данных уже есть данные, он проверяет их полноту и докачивает недостающие данные.
+Если данных нет, он загружает все доступные данные, начиная с указанной даты.
+Минутные данные за текущую сессию на MOEX ISS API доступны после 19:05 текущего дня,
+после окончания основной сессии.
 """
 
 from pathlib import Path
@@ -8,7 +12,6 @@ from datetime import datetime, timedelta, date, time
 import requests
 import pandas as pd
 import logging
-
 
 # Параметры
 ticker: str = 'RTS'  # Тикер фьючерса
@@ -77,9 +80,11 @@ def get_info_future(session, security):
     data = [{k: r[i] for i, k in enumerate(j['description']['columns'])} for r in j['description']['data']]
     df = pd.DataFrame(data)
 
-    shortname = df.loc[df['name'] == 'SHORTNAME', 'value'].values[0] if 'SHORTNAME' in df['name'].values else ""
-    lsttrade = df.loc[df['name'] == 'LSTTRADE', 'value'].values[0] if 'LSTTRADE' in df['name'].values else \
-               df.loc[df['name'] == 'LSTDELDATE', 'value'].values[0] if 'LSTDELDATE' in df['name'].values else "2130-01-01"
+    shortname = df.loc[df['name'] == 'SHORTNAME', 'value'].values[0] \
+        if 'SHORTNAME' in df['name'].values else ""
+    lsttrade = df.loc[df['name'] == 'LSTTRADE', 'value'].values[0] \
+        if 'LSTTRADE' in df['name'].values else df.loc[df['name'] == 'LSTDELDATE', 'value'].values[0] \
+        if 'LSTDELDATE' in df['name'].values else "2130-01-01"
 
     return pd.Series([shortname, lsttrade])  # Гарантируем возврат 2 значений
 
