@@ -29,6 +29,9 @@ model_name = "bge-m3"
 url_ai = "http://localhost:11434/api/embeddings"
 min_prev_files = 4  # Минимальное количество предыдущих файлов для предсказаний
 max_prev_files = 7  # Максимальное количество предыдущих файлов для предсказаний
+# Итоговый XLSX файл
+result_file = Path(
+    fr'C:\Users\Alkor\PycharmProjects\beget_rss\{ticker_lc}\{ticker_lc}_backtest_results_investing_ollama.xlsx')
 
 # Настройка логирования: вывод в консоль и в файл, файл перезаписывается
 log_file = Path(
@@ -259,10 +262,8 @@ def main(max_prev_files: int = 8):
 
     # Сохранение результатов в CSV и XLSX
     if not results_df.empty:
-        # results_df.to_csv('backtest_results_investing_ollama.csv', index=False)
-        results_df.to_excel(f'{ticker_lc}_backtest_results_investing_ollama.xlsx', index=False, engine='openpyxl')
-        # logger.info("Результаты сохранены в backtest_results_investing_ollama.csv и backtest_results_investing_ollama.xlsx")
-        logger.info(f"Результаты сохранены в {ticker_lc}_backtest_results_investing_ollama.xlsx")
+        results_df.to_excel(result_file, index=False, engine='openpyxl')
+        logger.info(f"Результаты сохранены в {result_file}")
     else:
         logger.error("Нет результатов для сохранения в файл.")
 
