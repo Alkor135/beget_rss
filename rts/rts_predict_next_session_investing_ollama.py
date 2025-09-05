@@ -49,9 +49,9 @@ file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(mes
 logger.addHandler(file_handler)
 
 def cosine_similarity(vec1, vec2):
-    """Оптимизированная версия вычисления косинусного сходства"""
-    vec1 = np.asarray(vec1)
-    vec2 = np.asarray(vec2)
+    """Оптимизированная версия вычисления косинусного сходства с float64."""
+    vec1 = np.asarray(vec1, dtype=np.float64)
+    vec2 = np.asarray(vec2, dtype=np.float64)
     norm1 = np.linalg.norm(vec1)
     norm2 = np.linalg.norm(vec2)
     return 0.0 if norm1 == 0 or norm2 == 0 else np.dot(vec1, vec2) / (norm1 * norm2)
@@ -88,6 +88,9 @@ def load_markdown_files(directory):
             try:
                 with open(file_path, 'r', encoding='utf-8') as file:
                     content = file.read()
+                # Логируем MD5-хэш файла
+                md5_hash = hashlib.md5(content.encode('utf-8')).hexdigest()
+                logger.info(f"MD5 хэш файла {file_path.name}: {md5_hash}")
                 text_content, metadata = parse_metadata(content, file_path)
                 documents.append(Document(page_content=text_content, metadata=metadata))
             except Exception as e:
@@ -133,6 +136,9 @@ def cache_embeddings(documents, cache_file, model_name, url_ai):
             try:
                 embeddings = ef(batch_contents)
                 for j, doc in enumerate(batch_docs):
+                    embedding = np.array(embeddings[j], dtype=np.float64)
+                    # Логируем первые 5 элементов эмбеддинга
+                    logger.info(f"Эмбеддинг для {doc.metadata['source']}: {embedding[:5]}")
                     cache.append({
                         'id': hashlib.md5(doc.page_content.encode()).hexdigest(),
                         'embedding': embeddings[j],
