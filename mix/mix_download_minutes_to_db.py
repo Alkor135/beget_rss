@@ -238,9 +238,9 @@ def main(
                 connection.commit()
                 print(f"Удалены записи с датой: {max_trade_date}")
 
-            # Меняем стартовую дату на удаленную дату
-            start_date = datetime.strptime(max_trade_date, "%Y-%m-%d").date()
-            print(f"Начальная дата для загрузки данных: {start_date}")
+            # # Меняем стартовую дату на удаленную дату
+            # start_date = datetime.strptime(max_trade_date, "%Y-%m-%d").date()
+            # print(f"Начальная дата для загрузки данных: {start_date}")
 
         with requests.Session() as session:
             get_future_date_results(session, start_date, ticker, connection, cursor)

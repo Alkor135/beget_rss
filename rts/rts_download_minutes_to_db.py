@@ -140,7 +140,7 @@ def get_minute_candles(session, ticker: str, start_date: date, from_str: str = N
     df['SECID'] = ticker
 
     df = df.dropna(subset=['OPEN', 'LOW', 'HIGH', 'CLOSE', 'VOLUME'])
-    logger.info(df.to_string(max_rows=6, max_cols=18), '\n')
+    logger.info(df.to_string(max_rows=6, max_cols=18))
 
     return df[['TRADEDATE', 'SECID', 'OPEN', 'LOW', 'HIGH', 'CLOSE', 'VOLUME']].reset_index(drop=True)
 
