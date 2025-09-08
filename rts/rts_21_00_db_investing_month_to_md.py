@@ -22,8 +22,8 @@ path_db_quote = Path(fr'C:/Users/Alkor/gd/data_quote_db/{ticker}_futures_day_202
 db_news_dir = Path(fr'C:/Users/Alkor/gd/db_rss_{rss_provider}')
 # Директория для сохранения markdown-файлов с новостями с 21:00 МСК предыдущей торговой сессии
 md_news_dir = Path(fr'c:/Users/Alkor/gd/md_{ticker_lc}_{rss_provider}')
-num_mds: int = 20  # Количество последних интервалов для сохранения в markdown файлы
-num_dbs: int = 2  # Количество последних файлов БД новостей для обработки
+num_mds: int = 100  # Количество последних интервалов для сохранения в markdown файлы
+num_dbs: int = 4  # Количество последних файлов БД новостей для обработки
 time_start = '21:00:00'  # Время с которого начинается поиск новостей за предыдущую сессию в БД
 time_end = '20:59:59'  # Время, которым заканчивается поиск новостей за текущую сессию в БД
 
