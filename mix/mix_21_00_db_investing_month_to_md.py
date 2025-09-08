@@ -10,11 +10,11 @@
 import pandas as pd
 from pathlib import Path
 import sqlite3
-
+import logging
 
 # Параметры
-ticker: str = 'MIX'
-ticker_lc = 'mix'
+ticker: str = 'MIX'  # Тикер фьючерса
+ticker_lc: str = 'mix'  # Тикер фьючерса в нижнем регистре
 rss_provider: str = 'investing'  # Поставщик новостей
 # Директория с БД дневных свечей с 21:00 предыдущей сессии до 21:00 даты свечи.
 path_db_quote = Path(fr'C:/Users/Alkor/gd/data_quote_db/{ticker}_futures_day_2025_21-00.db')
@@ -22,10 +22,28 @@ path_db_quote = Path(fr'C:/Users/Alkor/gd/data_quote_db/{ticker}_futures_day_202
 db_news_dir = Path(fr'C:/Users/Alkor/gd/db_rss_{rss_provider}')
 # Директория для сохранения markdown-файлов с новостями с 21:00 МСК предыдущей торговой сессии
 md_news_dir = Path(fr'c:/Users/Alkor/gd/md_{ticker_lc}_{rss_provider}')
-num_mds: int = 20  # Количество последних интервалов для сохранения в markdown файлы
-num_dbs: int = 2  # Количество последних файлов БД новостей для обработки
+num_mds: int = 100  # Количество последних интервалов для сохранения в markdown файлы
+num_dbs: int = 4  # Количество последних файлов БД новостей для обработки
 time_start = '21:00:00'  # Время с которого начинается поиск новостей за предыдущую сессию в БД
 time_end = '20:59:59'  # Время, которым заканчивается поиск новостей за текущую сессию в БД
+
+# Настройка логирования: вывод в консоль и в файл, файл перезаписывается
+log_file = Path(
+    fr'C:\Users\Alkor\gd\predict_ai\{ticker_lc}_investing_ollama\log\{ticker_lc}_21_00_db_investing_month_to_md.txt')
+log_file.parent.mkdir(parents=True, exist_ok=True)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+# Удаляем существующие обработчики, чтобы избежать дублирования
+logger.handlers = []
+logger.addHandler(logging.FileHandler(log_file))
+# Обработчик для консоли
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+logger.addHandler(console_handler)
+# Обработчик для файла (перезаписывается при каждом запуске)
+file_handler = logging.FileHandler(log_file, mode='w', encoding='utf-8')
+file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+logger.addHandler(file_handler)
 
 
 def read_db_quote(db_path_quote: Path) -> pd.DataFrame:
@@ -71,8 +89,7 @@ def save_titles_to_markdown(
         file_path: Path,
         next_bar: str,
         date_min: str,
-        date_max: str
-    ) -> None:
+        date_max: str) -> None:
     """
     Сохраняет заголовки новостей в markdown-файл с метаданными.
     """
@@ -114,16 +131,15 @@ def delete_latest_md_file(md_news_dir: Path) -> None:
     if md_files:
         latest_file = md_files[0]
         latest_file.unlink()
-        print(f"Удалён самый последний markdown-файл: {latest_file}")
+        logger.info(f"Удалён самый последний markdown-файл: {latest_file}")
 
 
 def main(
         path_db_quote: Path = path_db_quote,
         db_news_dir: Path = db_news_dir,
         md_news_dir: Path = md_news_dir,
-        num_mds: int = 30,
-        num_dbs: int = 3
-) -> None:
+        num_mds: int = 100,
+        num_dbs: int = 3) -> None:
     """
     Основная функция: читает котировки и новости из последних num_dbs файлов БД,
     удаляет самый последний markdown-файл, формирует и сохраняет не более num_mds markdown-файлов
@@ -133,21 +149,21 @@ def main(
     md_news_dir.mkdir(parents=True, exist_ok=True)
 
     if not path_db_quote.exists():
-        print(f"Ошибка: Файл базы данных котировок не найден. {path_db_quote}")
+        logger.error(f"Ошибка: Файл базы данных котировок не найден. {path_db_quote}")
         exit()
 
     # Проверяем наличие файлов БД новостей
     db_files = list(db_news_dir.glob("rss_news_investing_*_*.db"))
     if not db_files:
-        print("Ошибка: Файлы баз данных новостей не найдены.")
+        logger.error("Ошибка: Файлы баз данных новостей не найдены.")
         exit()
 
     # Получаем последние файлы БД новостей
     db_paths = get_latest_db_files(db_news_dir, num_files=num_dbs)
     if len(db_paths) < num_dbs:
-        print(f"Предупреждение: Найдено только {len(db_paths)} файлов БД, ожидалось {num_dbs}")
+        logger.error(f"Предупреждение: Найдено только {len(db_paths)} файлов БД, ожидалось {num_dbs}")
 
-    print("Используемые файлы БД:", [str(p) for p in db_paths])
+    logger.info("Используемые файлы БД:", [str(p) for p in db_paths])
 
     # Удаляем только самый последний markdown-файл
     delete_latest_md_file(md_news_dir)
@@ -171,10 +187,10 @@ def main(
         date_max = f"{row1['TRADEDATE']} {time_end}"  # Дата и время окончания поиска новостей в БД
 
         if file_path.exists():
-            print(f"Файл {file_name} уже существует, пропускаем.")
+            logger.info(f"Файл {file_name} уже существует, пропускаем.")
             continue
 
-        print(f"{file_name}. Новости за период: {date_min} - {date_max}")
+        logger.info(f"{file_name}. Новости за период: {date_min} - {date_max}")
         df_news = read_db_news_multiple(db_paths, date_max, date_min)
         if len(df_news) == 0:
             break

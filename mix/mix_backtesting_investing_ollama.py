@@ -3,7 +3,8 @@
 Кэширует эмбеддинги в pickle-файл для избежания повторного создания ChromaDB.
 Проверяет актуальность кэша при изменении или добавлении markdown-файлов.
 Ограничивает количество предыдущих файлов для предсказаний параметром max_prev_files.
-Добавляет финансовый результат в пунктах (next_bar_pips) и накопительный результат (cumulative_next_bar_pips).
+Добавляет финансовый результат в пунктах (next_bar_pips) и
+накопительный результат (cumulative_next_bar_pips).
 Сохраняет результаты XLSX файл.
 """
 
@@ -16,17 +17,39 @@ import yaml
 import sqlite3
 from langchain_core.documents import Document
 from chromadb.utils.embedding_functions import OllamaEmbeddingFunction
+import logging
 
 # Параметры
-ticker = 'MIX'
-ticker_lc = 'mix'
+ticker: str = 'MIX'  # Тикер фьючерса
+ticker_lc: str = 'mix'  # Тикер фьючерса в нижнем регистре
 md_path = Path(fr'C:\Users\Alkor\gd\md_{ticker_lc}_investing')
 cache_file = Path(fr'C:\Users\Alkor\PycharmProjects\beget_rss\{ticker_lc}\{ticker_lc}_embeddings_investing_ollama.pkl')
 path_db_quote = Path(fr'C:\Users\Alkor\gd\data_quote_db\{ticker}_futures_day_2025_21-00.db')
 model_name = "bge-m3"
 url_ai = "http://localhost:11434/api/embeddings"
-min_prev_files = 4   # Минимальное количество предыдущих файлов для предсказаний
-max_prev_files = 7  # Максимальное количество предыдущих файлов для предсказаний
+min_prev_files = 4  # Минимальное количество предыдущих файлов для предсказаний
+max_prev_files = 5  # Максимальное количество предыдущих файлов для предсказаний
+# Итоговый XLSX файл
+result_file = Path(
+    fr'C:\Users\Alkor\PycharmProjects\beget_rss\{ticker_lc}\{ticker_lc}_backtest_results_investing_ollama.xlsx')
+
+# Настройка логирования: вывод в консоль и в файл, файл перезаписывается
+log_file = Path(
+    fr'C:\Users\Alkor\gd\predict_ai\{ticker_lc}_investing_ollama\log\{ticker_lc}_backtesting_investing_ollama.txt')
+log_file.parent.mkdir(parents=True, exist_ok=True)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+# Удаляем существующие обработчики, чтобы избежать дублирования
+logger.handlers = []
+logger.addHandler(logging.FileHandler(log_file))
+# Обработчик для консоли
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+logger.addHandler(console_handler)
+# Обработчик для файла (перезаписывается при каждом запуске)
+file_handler = logging.FileHandler(log_file, mode='w', encoding='utf-8')
+file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+logger.addHandler(file_handler)
 
 def cosine_similarity(vec1, vec2):
     """Вычисляет косинусное сходство между двумя векторами."""
@@ -93,14 +116,14 @@ def cache_is_valid(documents, cache_file):
 
     # Проверяем, совпадают ли наборы файлов
     if current_files != cache_files:
-        print("Кэш устарел: изменился набор markdown-файлов.")
+        logger.info("Кэш устарел: изменился набор markdown-файлов.")
         return False
 
     # Проверяем, не изменились ли файлы
     for doc in documents:
         file_path = md_path / doc.metadata['source']
         if file_path.stat().st_mtime > cache_mtime:
-            print(f"Кэш устарел: файл {file_path.name} был изменён.")
+            logger.info(f"Кэш устарел: файл {file_path.name} был изменён.")
             return False
 
     return True
@@ -108,12 +131,12 @@ def cache_is_valid(documents, cache_file):
 def cache_embeddings(documents, cache_file, model_name, url_ai):
     """Вычисляет и кэширует эмбеддинги всех документов в pickle-файл."""
     if cache_is_valid(documents, cache_file):
-        print(f"Загрузка кэша эмбеддингов из {cache_file}")
+        logger.info(f"Загрузка кэша эмбеддингов из {cache_file}")
         with open(cache_file, 'rb') as f:
             cache = pickle.load(f)
         return cache
 
-    print("Вычисление эмбеддингов...")
+    logger.info("Вычисление эмбеддингов...")
     ef = OllamaEmbeddingFunction(model_name=model_name, url=url_ai)
     cache = []
     for doc in documents:
@@ -125,21 +148,21 @@ def cache_embeddings(documents, cache_file, model_name, url_ai):
         })
     with open(cache_file, 'wb') as f:
         pickle.dump(cache, f)
-    print(f"Эмбеддинги сохранены в {cache_file}")
+    logger.info(f"Эмбеддинги сохранены в {cache_file}")
     return cache
 
 def main(max_prev_files: int = 8):
     """Проводит backtesting: для каждой тестовой даты симулирует предсказание с использованием кэша."""
     # Загрузка котировок
     if not path_db_quote.exists():
-        print(f"Ошибка: Файл базы данных котировок не найден: {path_db_quote}")
+        logger.error(f"Ошибка: Файл базы данных котировок не найден: {path_db_quote}")
         exit(1)
     quotes_df = load_quotes(path_db_quote)
 
     # Загрузка markdown-файлов
     documents = load_markdown_files(md_path)
     if len(documents) < min_prev_files + 1:
-        print(f"Недостаточно файлов: {len(documents)}. Требуется минимум {min_prev_files + 1}.")
+        logger.error(f"Недостаточно файлов: {len(documents)}. Требуется минимум {min_prev_files + 1}.")
         exit(1)
 
     # Кэширование эмбеддингов
@@ -155,7 +178,7 @@ def main(max_prev_files: int = 8):
         test_date = test_doc.metadata['date']
 
         if real_next_bar == 'unknown' or real_next_bar == 'None':
-            print(f"Пропуск даты {test_date}: next_bar неизвестен. {real_next_bar=}")
+            logger.info(f"Пропуск даты {test_date}: next_bar неизвестен. {real_next_bar=}")
             continue
 
         # Получение эмбеддинга тестовой даты из кэша
@@ -166,7 +189,7 @@ def main(max_prev_files: int = 8):
                 test_embedding = item['embedding']
                 break
         if test_embedding is None:
-            print(f"Эмбеддинг для даты {test_date} не найден в кэше.")
+            logger.error(f"Эмбеддинг для даты {test_date} не найден в кэше.")
             continue
 
         # Получение предыдущих документов из кэша, ближайших по дате
@@ -176,7 +199,7 @@ def main(max_prev_files: int = 8):
         )[:max_prev_files]  # Ограничиваем max_prev_files ближайшими датами
 
         if len(prev_cache) < min_prev_files:
-            print(f"Недостаточно предыдущих документов для даты {test_date}: {len(prev_cache)}")
+            logger.error(f"Недостаточно предыдущих документов для даты {test_date}: {len(prev_cache)}")
             continue
 
         # Вычисление сходств
@@ -199,7 +222,7 @@ def main(max_prev_files: int = 8):
                 next_bar_pips_value = quotes_df.loc[test_date, 'next_bar_pips']
                 next_bar_pips = abs(next_bar_pips_value) if is_correct else -abs(next_bar_pips_value)
             except KeyError:
-                print(f"Данные котировок для даты {test_date} не найдены.")
+                logger.error(f"Данные котировок для даты {test_date} не найдены.")
                 continue
 
             results.append({
@@ -215,7 +238,7 @@ def main(max_prev_files: int = 8):
             if is_correct:
                 correct_predictions += 1
 
-            print(f"Дата: {test_date}, Предсказание: {predicted_next_bar}, Реальное: {real_next_bar}, "
+            logger.info(f"Дата: {test_date}, Предсказание: {predicted_next_bar}, Реальное: {real_next_bar}, "
                   f"Сходство: {closest_similarity:.2f}%, Правильно: {is_correct}, next_bar_pips: {next_bar_pips}")
 
     # Создание DataFrame и добавление накопительного результата
@@ -223,25 +246,26 @@ def main(max_prev_files: int = 8):
     if not results_df.empty:
         results_df['cumulative_next_bar_pips'] = results_df['next_bar_pips'].cumsum()
     else:
-        print("Нет результатов для сохранения.")
+        logger.info("Нет результатов для сохранения.")
 
     # Статистика
     if total_predictions > 0:
         accuracy = (correct_predictions / total_predictions) * 100
-        print(f"\nОбщая точность: {accuracy:.2f}% ({correct_predictions}/{total_predictions})")
+        logger.info(f"\nОбщая точность: {accuracy:.2f}% ({correct_predictions}/{total_predictions})")
         if not results_df.empty:
-            print(f"Итоговый накопительный результат: {results_df['cumulative_next_bar_pips'].iloc[-1]:.2f} пунктов")
+            logger.info(
+                f"Итоговый накопительный для {min_prev_files}/{max_prev_files} результат: "
+                f"{results_df['cumulative_next_bar_pips'].iloc[-1]:.2f} пунктов"
+            )
     else:
-        print("Нет предсказаний для оценки.")
+        logger.info("Нет предсказаний для оценки.")
 
     # Сохранение результатов в CSV и XLSX
     if not results_df.empty:
-        # results_df.to_csv('backtest_results_investing_ollama.csv', index=False)
-        results_df.to_excel(f'{ticker_lc}_backtest_results_investing_ollama.xlsx', index=False, engine='openpyxl')
-        # print("Результаты сохранены в backtest_results_investing_ollama.csv и backtest_results_investing_ollama.xlsx")
-        print(f"Результаты сохранены в {ticker_lc}_backtest_results_investing_ollama.xlsx")
+        results_df.to_excel(result_file, index=False, engine='openpyxl')
+        logger.info(f"Результаты сохранены в {result_file}")
     else:
-        print("Нет результатов для сохранения в файл.")
+        logger.error("Нет результатов для сохранения в файл.")
 
 if __name__ == '__main__':
     main(max_prev_files=max_prev_files)
