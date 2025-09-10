@@ -163,7 +163,8 @@ def main(
     if len(db_paths) < num_dbs:
         logger.error(f"Предупреждение: Найдено только {len(db_paths)} файлов БД, ожидалось {num_dbs}")
 
-    logger.info("Используемые файлы БД:", [str(p) for p in db_paths])
+    # logger.info("Используемые файлы БД:", [str(p) for p in db_paths])
+    logger.info(f"Используемые файлы БД: {', '.join(str(p) for p in db_paths)}")
 
     # Удаляем только самый последний markdown-файл
     delete_latest_md_file(md_news_dir)

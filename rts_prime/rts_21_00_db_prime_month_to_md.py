@@ -106,7 +106,7 @@ def save_titles_to_markdown(
 def get_latest_db_files(directory: Path, num_files: int = 2) -> list[Path]:
     """
     Находит последние num_files файлов БД новостей в директории, сортируя по году и месяцу в имени (descending).
-    Фильтрует только файлы формата rss_news_investing_YYYY_MM.db.
+    Фильтрует только файлы формата rss_news_{rss_provider}_YYYY_MM.db.
     """
     files = []
     for f in directory.glob(f"rss_news_{rss_provider}_*_*.db"):
@@ -166,7 +166,8 @@ def main(
     if len(db_paths) < num_dbs:
         logger.error(f"Предупреждение: Найдено только {len(db_paths)} файлов БД, ожидалось {num_dbs}")
 
-    # logger.info("Используемые файлы БД:", [str(p) for p in db_paths])
+    # logger.info(f"Используемые файлы БД:", [str(p) for p in db_paths])
+    logger.info(f"Используемые файлы БД: {', '.join(str(p) for p in db_paths)}")
 
     # Удаляем только самый последний markdown-файл
     delete_latest_md_file(md_news_dir)

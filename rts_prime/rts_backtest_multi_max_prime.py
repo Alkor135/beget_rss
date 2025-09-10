@@ -16,37 +16,48 @@ from chromadb.utils.embedding_functions import OllamaEmbeddingFunction
 import logging
 
 # Параметры
-ticker: str = 'RTS'  # Тикер фьючерса
-ticker_lc: str = 'rts'  # Тикер фьючерса в нижнем регистре
-rss_provider: str = 'prime'  # Поставщик новостей
-md_path = Path(fr'C:\Users\Alkor\gd\md_{ticker_lc}_{rss_provider}')
+ticker: str = 'RTS'  # Тикер фьючерса (например, RTS — индекс RTS)
+ticker_lc: str = 'rts'  # Тикер в нижнем регистре для использования в путях и именах файлов
+rss_provider: str = 'prime'  # Поставщик новостей (в данном случае — 'prime')
+md_path = Path(fr'C:\Users\Alkor\gd\md_{ticker_lc}_{rss_provider}')  # Директория с markdown-файлами новостей
 cache_file = Path(
-    fr'C:\Users\Alkor\PycharmProjects\beget_rss\{ticker_lc}_{rss_provider}\{ticker_lc}_embeddings_{rss_provider}_ollama.pkl')
-path_db_quote = Path(fr'C:\Users\Alkor\gd\data_quote_db\{ticker}_futures_day_2025_21-00.db')
-model_name = "bge-m3"
-url_ai = "http://localhost:11434/api/embeddings"
-min_prev_files = 4   # Минимальное количество предыдущих файлов для предсказаний
-# Итоговый XLSX файл
-output_file = Path(
-    fr'C:\Users\Alkor\PycharmProjects\beget_rss\{ticker_lc}_{rss_provider}\{ticker_lc}_backtest_results_multi_max_{rss_provider}.xlsx')
+    fr'C:\Users\Alkor\PycharmProjects\beget_rss\{ticker_lc}_{rss_provider}'  # Базовый путь к проекту
+    fr'\{ticker_lc}_embeddings_{rss_provider}_ollama.pkl'  # Имя файла кэша эмбеддингов
+)  # Путь к файлу кэша эмбеддингов (в формате .pkl)
+path_db_quote = Path(  # Путь к базе данных котировок фьючерса
+    fr'C:\Users\Alkor\gd\data_quote_db\{ticker}_futures_day_2025_21-00.db'
+)  # Файл SQLite с историческими данными по котировкам
+model_name = "bge-m3"  # Используемая модель для генерации эмбеддингов (OLLAMA)
+url_ai = "http://localhost:11434/api/embeddings"  # URL локального OLLAMA сервера для получения эмбеддингов
+min_prev_files = 4   # Минимальное количество предыдущих файлов для сравнения при backtest'е
+output_file = Path(  # Путь к итоговому XLSX файлу с результатами backtests
+    fr'C:\Users\Alkor\PycharmProjects\beget_rss\{ticker_lc}_{rss_provider}'  # Базовая директория
+    fr'\{ticker_lc}_backtest_results_multi_max_{rss_provider}.xlsx'  # Имя выходного файла
+)  # Выводимые результаты сохраняются в один Excel-файл
 
-# Настройка логирования: вывод в консоль и в файл, файл перезаписывается
-log_file = Path(
-    fr'C:\Users\Alkor\gd\predict_ai\{ticker_lc}_{rss_provider}_ollama\log\{ticker_lc}_backtest_multi_max_{rss_provider}.txt')
-log_file.parent.mkdir(parents=True, exist_ok=True)
+# ----- Настройка логирования: вывод в консоль и в файл, файл перезаписывается -----
+# --- Настройка пути к лог-файлу ---
+log_dir = Path(fr'C:\Users\Alkor\gd\predict_ai\{ticker_lc}_{rss_provider}_ollama\log')
+log_file = log_dir / f'{ticker_lc}_backtest_multi_max_{rss_provider}.txt'
+# Создаём директорию для логов, если её нет
+log_dir.mkdir(parents=True, exist_ok=True)
+# --- Конфигурация логгера ---
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-# Удаляем существующие обработчики, чтобы избежать дублирования
+# Очищаем старые обработчики, чтобы избежать дублирования логов
 logger.handlers = []
-logger.addHandler(logging.FileHandler(log_file))
-# Обработчик для консоли
+# --- Формат логов ---
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+# --- Обработчик для консоли ---
 console_handler = logging.StreamHandler()
-console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
-# Обработчик для файла (перезаписывается при каждом запуске)
+# --- Обработчик для файла (лог перезаписывается при каждом запуске) ---
 file_handler = logging.FileHandler(log_file, mode='w', encoding='utf-8')
-file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
+# --- Логируем начало выполнения ---
+logger.info("=== Начало выполнения скрипта ===")
 
 def cosine_similarity(vec1, vec2):
     """Вычисляет косинусное сходство между двумя векторами."""
@@ -85,8 +96,12 @@ def load_markdown_files(directory):
 
 def load_quotes(path_db_quote):
     """Читает таблицу Futures из базы данных котировок и возвращает DataFrame с next_bar_pips."""
-    with sqlite3.connect(path_db_quote) as conn:
-        df = pd.read_sql_query("SELECT TRADEDATE, OPEN, CLOSE FROM Futures", conn)
+    try:
+        with sqlite3.connect(path_db_quote) as conn:
+            df = pd.read_sql_query("SELECT TRADEDATE, OPEN, CLOSE FROM Futures", conn)
+    except sqlite3.DatabaseError as e:
+        logger.error(f"Ошибка при чтении базы данных: {e}")
+        exit(1)
     df = df.sort_values('TRADEDATE', ascending=True)
     df['TRADEDATE'] = df['TRADEDATE'].astype(str)
     # Вычисляем финансовый результат за следующий день
@@ -149,7 +164,10 @@ def cache_embeddings(documents, cache_file, model_name, url_ai):
     return cache
 
 def backtest_predictions(documents, cache, quotes_df, max_prev_files):
-    """Проводит backtesting для заданного max_prev_files и возвращает DataFrame с test_date и cumulative_next_bar_pips."""
+    """
+    Проводит backtesting для заданного max_prev_files и возвращает DataFrame с test_date и
+    cumulative_next_bar_pips.
+    """
     results = []
 
     for test_idx in range(min_prev_files, len(documents)):
@@ -218,6 +236,7 @@ def main():
     # Загрузка котировок
     if not path_db_quote.exists():
         logger.error(f"Ошибка: Файл базы данных котировок не найден: {path_db_quote}")
+        logger.info("Убедитесь, что путь указан правильно и файл существует.")
         exit(1)
     quotes_df = load_quotes(path_db_quote)
 
@@ -235,8 +254,9 @@ def main():
     all_results = pd.DataFrame()
 
     # Диапазон max_prev_files от 5 до 30
-    for max_prev in range(5, 31):
-        logger.info(f"Проводим backtest для max_prev_files = {max_prev}")
+    total_runs = 26  # 5 to 30
+    for i, max_prev in enumerate(range(5, 31)):
+        logger.info(f"[{i + 1}/{total_runs}] Проводим backtest для max_prev_files = {max_prev}")
         results_df = backtest_predictions(documents, cache, quotes_df, max_prev)
         if not results_df.empty:
             results_df = results_df.rename(columns={'cumulative_next_bar_pips': f'max_{max_prev}'})
