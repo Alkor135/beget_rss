@@ -163,7 +163,7 @@ if trade_content:
     # Добавление записи в файл input.tri в кодировке cp1251
     with trade_filepath.open('a', encoding='cp1251') as f:
         f.write(trade_content)
-    logger.info(f'{current_predict=}, {prev_predict=}')
+    logger.info(f'{prev_predict=}, {current_predict=}')
     logger.info(f"Добавлена транзакция {trade_direction} с TRANS_ID={trans_id} в файл {trade_filepath}.")
 else:
     logger.info(
