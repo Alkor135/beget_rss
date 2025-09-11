@@ -4,8 +4,8 @@ import re
 import logging
 
 # Параметры
-ticker = 'RIU5'  # Торгуемый инструмент
-ticker_lc = 'rts'
+ticker = 'MXU5'  # Торгуемый инструмент
+ticker_lc = 'mix'
 quantity = '2'
 
 predict_path = Path(
