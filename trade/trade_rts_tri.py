@@ -8,8 +8,10 @@ ticker = 'RIU5'  # Торгуемый инструмент
 ticker_lc = 'rts'
 quantity = '2'
 
-predict_path = Path(fr"C:\Users\Alkor\gd\predict_ai\{ticker_lc}_investing_ollama")  # Путь к папке с файлами прогнозов
-log_path = Path(fr"C:\Users\Alkor\gd\predict_ai\{ticker_lc}_investing_ollama\log")  # Путь к папке с файлом логов
+predict_path = Path(
+    fr"C:\Users\Alkor\gd\predict_ai\{ticker_lc}_investing_ollama")  # Путь к папке с файлами прогнозов
+log_path = Path(
+    fr"C:\Users\Alkor\gd\predict_ai\{ticker_lc}_investing_ollama\log")  # Путь к папке с файлом логов
 trade_path = Path(r"C:\QUIK_VTB_2025_ЕБС\algotrade")  # Путь к папке с файлами trade
 trade_path.mkdir(parents=True, exist_ok=True)  # Создание папки, если не существует
 trade_filepath = trade_path / 'input.tri'
@@ -26,7 +28,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler(log_file, mode='w', encoding='utf-8'),  # Перезапись файла лога
+        logging.FileHandler(log_file, mode='a', encoding='utf-8'),  # Перезапись файла лога
         logging.StreamHandler()  # Вывод в консоль
     ]
 )
@@ -164,4 +166,6 @@ if trade_content:
     logger.info(f'{current_predict=}, {prev_predict=}')
     logger.info(f"Добавлена транзакция {trade_direction} с TRANS_ID={trans_id} в файл {trade_filepath}.")
 else:
-    logger.info("Условия для сигналов BUY или SELL не выполнены.")
+    logger.info(
+        f"На {today} условия для сигналов BUY или SELL не выполнены. "
+        f"{prev_predict=}, {current_predict=}")
