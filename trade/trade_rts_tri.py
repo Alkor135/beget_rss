@@ -144,18 +144,47 @@ def create_trade_block(ticker, action, quantity, comment):
     )
 
 # Логика выбора направления
-if current_predict == 'down' and prev_predict == 'up':
-    trade_direction = 'SELL'
-    trade_content = (
-        create_trade_block(ticker_close, 'Продажа', quantity_close, 'close') +
-        create_trade_block(ticker_open, 'Продажа', quantity_open, 'open')
-    )
-elif current_predict == 'up' and prev_predict == 'down':
-    trade_direction = 'BUY'
-    trade_content = (
-        create_trade_block(ticker_close, 'Покупка', quantity_close, 'close') +
-        create_trade_block(ticker_open, 'Покупка', quantity_open, 'open')
-    )
+if ticker_close == ticker_open:  # Проверка на совпадение инструментов (тикеры одинаковые)
+    # Условия для переворота позиций
+    if current_predict == 'down' and prev_predict == 'up':
+        trade_direction = 'SELL'
+        trade_content = (
+            create_trade_block(ticker_close, 'Продажа', quantity_close, 'close') +
+            create_trade_block(ticker_open, 'Продажа', quantity_open, 'open')
+        )
+    elif current_predict == 'up' and prev_predict == 'down':
+        trade_direction = 'BUY'
+        trade_content = (
+            create_trade_block(ticker_close, 'Покупка', quantity_close, 'close') +
+            create_trade_block(ticker_open, 'Покупка', quantity_open, 'open')
+        )
+elif ticker_close != ticker_open:  # Условие ролловера (тикеры разные)
+    # Условия для переворота позиций
+    if current_predict == 'down' and prev_predict == 'up':
+        trade_direction = 'SELL'
+        trade_content = (
+                create_trade_block(ticker_close, 'Продажа', quantity_close, 'close') +
+                create_trade_block(ticker_open, 'Продажа', quantity_open, 'open')
+        )
+    elif current_predict == 'up' and prev_predict == 'down':
+        trade_direction = 'BUY'
+        trade_content = (
+                create_trade_block(ticker_close, 'Покупка', quantity_close, 'close') +
+                create_trade_block(ticker_open, 'Покупка', quantity_open, 'open')
+        )
+    # Условия для переоткрытия позиций по новому тикеру
+    elif current_predict == 'down' and prev_predict == 'down':
+        trade_direction = 'SELL'
+        trade_content = (
+                create_trade_block(ticker_close, 'Продажа', quantity_close, 'close') +
+                create_trade_block(ticker_open, 'Продажа', quantity_open, 'open')
+        )
+    elif current_predict == 'up' and prev_predict == 'up':
+        trade_direction = 'BUY'
+        trade_content = (
+                create_trade_block(ticker_close, 'Покупка', quantity_close, 'close') +
+                create_trade_block(ticker_open, 'Покупка', quantity_open, 'open')
+        )
 
 # --- Запись результата ---
 if trade_content:
