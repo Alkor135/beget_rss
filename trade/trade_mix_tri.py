@@ -5,7 +5,7 @@ import logging
 
 # --- Конфигурация ---
 # Торгуемые инструменты и количество
-ticker_close = 'MXU5'  # Инструмент для закрытия позиции
+ticker_close = 'MXZ5'  # Инструмент для закрытия позиции
 quantity_close = '1'
 ticker_open = 'MXZ5'  # Инструмент для открытия новой позиции
 quantity_open = '1'
@@ -70,17 +70,15 @@ def get_next_trans_id(trade_filepath):
                 content = f.read()
                 trans_ids = re.findall(r'TRANS_ID=(\d+);', content)
                 if trans_ids:
-                    trans_id = max(int(tid) for tid in trans_ids) + 1
-        except UnicodeDecodeError:
-            logger.info(f"Не удалось прочитать файл {trade_filepath} для определения TRANS_ID.")
+                    trans_id = max(int(tid) for tid in trans_ids if tid.isdigit()) + 1
+        except (UnicodeDecodeError, ValueError) as e:
+            logger.error(f"Ошибка при чтении TRANS_ID из {trade_filepath}: {e}")
     return trans_id
 
 # --- Основная логика ---
 # Проверка наличия файла прогноза на сегодня
-if not current_filepath.exists():
-    logger.error(
-        f"Файл за текущую дату {current_filename} не найден в {current_filepath}. "
-        f"Проверьте наличие файла.")
+if not current_filepath.exists() or current_filepath.stat().st_size == 0:
+    logger.warning(f"Файл {current_filepath} не существует или пуст.")
     exit(1)
 
 # Сбор и сортировка всех .txt файлов по дате
@@ -123,10 +121,10 @@ expiry_date = today.strftime("%Y%m%d")
 trade_direction = None
 trade_content = None
 
-def create_trade_block(ticker, action, quantity, comment):
+def create_trade_block(tr_id, ticker, action, quantity):
     """Формирует блок транзакции в зависимости от направления и инструмента."""
     return (
-        f'TRANS_ID={trans_id};'
+        f'TRANS_ID={tr_id};'
         f'CLASSCODE=SPBFUT;'
         f'ACTION=Ввод заявки;'
         f'Торговый счет=SPBFUT192yc;'
@@ -137,53 +135,55 @@ def create_trade_block(ticker, action, quantity, comment):
         f'Цена=0;'
         f'Количество={quantity};'
         f'Условие исполнения=Поставить в очередь;'
-        f'Комментарий=SPBFUT192yc//TRI//{comment};'
+        f'Комментарий=SPBFUT192yc//TRI;'
         f'Переносить заявку=Нет;'
         f'Дата экспирации={expiry_date};'
         f'Код внешнего пользователя=;\n'
     )
 
-# Логика выбора направления
-if ticker_close == ticker_open:  # Проверка на совпадение инструментов (тикеры одинаковые)
+# --- Логика выбора направления ---
+# Проверка на совпадение инструментов (тикеры одинаковые)
+if ticker_close == ticker_open:
     # Условия для переворота позиций
     if current_predict == 'down' and prev_predict == 'up':
         trade_direction = 'SELL'
         trade_content = (
-            create_trade_block(ticker_close, 'Продажа', quantity_close, 'close') +
-            create_trade_block(ticker_open, 'Продажа', quantity_open, 'open')
+            create_trade_block(trans_id, ticker_close, 'Продажа', quantity_close) +
+            create_trade_block(trans_id+1, ticker_open, 'Продажа', quantity_open)
         )
     elif current_predict == 'up' and prev_predict == 'down':
         trade_direction = 'BUY'
         trade_content = (
-            create_trade_block(ticker_close, 'Покупка', quantity_close, 'close') +
-            create_trade_block(ticker_open, 'Покупка', quantity_open, 'open')
+            create_trade_block(trans_id, ticker_close, 'Покупка', quantity_close) +
+            create_trade_block(trans_id+1, ticker_open, 'Покупка', quantity_open)
         )
-elif ticker_close != ticker_open:  # Условие ролловера (тикеры разные)
+# Условие ролловера (тикеры разные)
+elif ticker_close != ticker_open:
     # Условия для переворота позиций
     if current_predict == 'down' and prev_predict == 'up':
         trade_direction = 'SELL'
         trade_content = (
-                create_trade_block(ticker_close, 'Продажа', quantity_close, 'close') +
-                create_trade_block(ticker_open, 'Продажа', quantity_open, 'open')
+                create_trade_block(trans_id, ticker_close, 'Продажа', quantity_close) +
+                create_trade_block(trans_id+1, ticker_open, 'Продажа', quantity_open)
         )
     elif current_predict == 'up' and prev_predict == 'down':
         trade_direction = 'BUY'
         trade_content = (
-                create_trade_block(ticker_close, 'Покупка', quantity_close, 'close') +
-                create_trade_block(ticker_open, 'Покупка', quantity_open, 'open')
+                create_trade_block(trans_id, ticker_close, 'Покупка', quantity_close) +
+                create_trade_block(trans_id+1, ticker_open, 'Покупка', quantity_open)
         )
     # Условия для переоткрытия позиций по новому тикеру
     elif current_predict == 'down' and prev_predict == 'down':
         trade_direction = 'SELL'
         trade_content = (
-                create_trade_block(ticker_close, 'Продажа', quantity_close, 'close') +
-                create_trade_block(ticker_open, 'Продажа', quantity_open, 'open')
+                create_trade_block(trans_id, ticker_close, 'Продажа', quantity_close) +
+                create_trade_block(trans_id+1, ticker_open, 'Продажа', quantity_open)
         )
     elif current_predict == 'up' and prev_predict == 'up':
         trade_direction = 'BUY'
         trade_content = (
-                create_trade_block(ticker_close, 'Покупка', quantity_close, 'close') +
-                create_trade_block(ticker_open, 'Покупка', quantity_open, 'open')
+                create_trade_block(trans_id, ticker_close, 'Покупка', quantity_close) +
+                create_trade_block(trans_id+1, ticker_open, 'Покупка', quantity_open)
         )
 
 # --- Запись результата ---
