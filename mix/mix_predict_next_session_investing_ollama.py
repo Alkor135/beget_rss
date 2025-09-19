@@ -208,20 +208,20 @@ def main(max_prev_files: int = 7):
         logger.error(f"Некорректный формат даты: {none_date}")
         return
 
-    # prev_cache = sorted(
-    #     [item for item in cache if
-    #      item['metadata']['next_bar'] != "None" and
-    #      datetime.datetime.strptime(item['metadata']['date'], '%Y-%m-%d') < none_date_dt],
-    #     key=lambda x: datetime.datetime.strptime(x['metadata']['date'], '%Y-%m-%d'),
-    #     reverse=True
-    # )[:max_prev_files]
-
-    # Получение предыдущих документов из кэша, ближайших по дате
     prev_cache = sorted(
         [item for item in cache if
-         item['metadata']['next_bar'] != "None" and item['metadata']['date'] < none_date],
-        key=lambda x: x['metadata']['date'], reverse=True
-    )[:max_prev_files]  # Ограничиваем max_prev_files ближайшими датами
+         item['metadata']['next_bar'] != "None" and
+         datetime.datetime.strptime(item['metadata']['date'], '%Y-%m-%d') < none_date_dt],
+        key=lambda x: datetime.datetime.strptime(x['metadata']['date'], '%Y-%m-%d'),
+        reverse=True
+    )[:max_prev_files]
+
+    # # Получение предыдущих документов из кэша, ближайших по дате
+    # prev_cache = sorted(
+    #     [item for item in cache if
+    #      item['metadata']['next_bar'] != "None" and item['metadata']['date'] < none_date],
+    #     key=lambda x: x['metadata']['date'], reverse=True
+    # )[:max_prev_files]  # Ограничиваем max_prev_files ближайшими датами
 
     if len(prev_cache) < min_prev_files:
         logger.error(f"Недостаточно предыдущих документов для даты {none_date}: {len(prev_cache)}")

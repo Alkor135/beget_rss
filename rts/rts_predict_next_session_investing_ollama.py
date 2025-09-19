@@ -23,7 +23,8 @@ import logging
 # Параметры
 ticker_lc = 'rts'
 md_path = Path(fr'C:\Users\Alkor\gd\md_{ticker_lc}_investing')
-cache_file = Path(fr'C:\Users\Alkor\PycharmProjects\beget_rss\{ticker_lc}\{ticker_lc}_embeddings_investing_ollama.pkl')
+cache_file = Path(
+    fr'C:\Users\Alkor\PycharmProjects\beget_rss\{ticker_lc}\{ticker_lc}_embeddings_investing_ollama.pkl')
 model_name = "bge-m3"
 url_ai = "http://localhost:11434/api/embeddings"
 min_prev_files = 4
@@ -59,47 +60,67 @@ def cosine_similarity(vec1, vec2):
 
 def parse_metadata(content, file_path):
     """Извлекает метаданные и контент из markdown-файла."""
+    # Проверяем, начинается ли содержимое файла с трёх дефисов ('---'),
+    # что обычно используется в формате YAML для разделения метаданных и основного текста.
     if content.startswith('---'):
+        # Делим содержимое файла на три части по символу '---'.
+        # Ожидаем, что первая часть — пустая, вторая — YAML-метаданные, третья — текст.
         parts = content.split('---', 2)
+        # Проверяем, что разбиение дало как минимум 3 части (начало, метаданные, текст).
         if len(parts) >= 3:
+            # Вторая часть содержит YAML-метаданные, удаляем лишние пробелы.
             metadata_yaml = parts[1].strip()
+            # Третья часть — основной текст документа.
             text_content = parts[2].strip()
+            # Парсим YAML-строку в словарь Python.
             metadata = yaml.safe_load(metadata_yaml) or {}
+            # Возвращаем текст и подготовленные метаданные.
             return text_content, {
+                # Значение "next_bar" из метаданных, или "unknown", если не найдено.
                 "next_bar": str(metadata.get("next_bar", "unknown")),
+                # Минимальная дата из метаданных.
                 "date_min": str(metadata.get("date_min", "unknown")),
+                # Максимальная дата из метаданных.
                 "date_max": str(metadata.get("date_max", "unknown")),
+                # Имя файла как источник данных.
                 "source": file_path.name,
+                # Имя файла без расширения в качестве даты.
                 "date": file_path.stem
             }
-    return content, {
-        "next_bar": "unknown",
-        "date_min": "unknown",
-        "date_max": "unknown",
-        "source": file_path.name,
-        "date": file_path.stem
-    }
+    else:
+        # Если файл не начинается с '---', выводим ошибку.
+        logger.error(f"Файл {file_path} не содержит метаданных.")
+        # Прерываем выполнение программы.
+        exit(0)
 
 def load_markdown_files(directory):
     """Загружает все MD-файлы из директории, сортирует по дате."""
     try:
+        # Получаем список всех .md файлов в указанной директории и сортируем их по имени файла (имя = дата).
         files = sorted(directory.glob("*.md"), key=lambda f: f.stem)
-        documents = []
+        documents = []  # Создаём пустой список для хранения объектов Document langchain.
         for file_path in files:
             try:
+                # Открываем файл в режиме чтения с кодировкой UTF-8.
                 with open(file_path, 'r', encoding='utf-8') as file:
-                    content = file.read()
-                # Логируем MD5-хэш файла
+                    content = file.read()  # Считываем всё содержимое файла.
+                # Вычисляем MD5-хэш содержимого файла для контроля целостности.
                 md5_hash = hashlib.md5(content.encode('utf-8')).hexdigest()
+                # Логируем хэш файла.
                 logger.info(f"MD5 хэш файла {file_path.name}: {md5_hash}")
+                # Извлекаем текст и метаданные из содержимого с помощью функции parse_metadata.
                 text_content, metadata = parse_metadata(content, file_path)
+                # Создаём объект Document и добавляем его в список.
                 documents.append(Document(page_content=text_content, metadata=metadata))
             except Exception as e:
+                # Если произошла ошибка при обработке конкретного файла, логируем её и продолжаем выполнение.
                 logger.error(f"Ошибка при чтении файла {file_path}: {str(e)}")
                 continue
+        # Логируем количество успешно загруженных markdown-файлов.
         logger.info(f"Загружено {len(documents)} markdown-файлов")
-        return documents
+        return documents  # Возвращаем список объектов Document.
     except Exception as e:
+        # Если произошла ошибка при доступе к директории или глобальном процессе загрузки — логируем и возвращаем пустой список.
         logger.error(f"Ошибка при загрузке файлов из {directory}: {str(e)}")
         return []
 
@@ -202,26 +223,28 @@ def main(max_prev_files: int = 7):
         logger.error(f"Эмбеддинг для даты {none_date} не найден в кэше.")
         return
 
+    # Преобразование none_date в datetime
     try:
         none_date_dt = datetime.datetime.strptime(none_date, '%Y-%m-%d')
     except ValueError:
         logger.error(f"Некорректный формат даты: {none_date}")
         return
 
-    # prev_cache = sorted(
-    #     [item for item in cache if
-    #      item['metadata']['next_bar'] != "None" and
-    #      datetime.datetime.strptime(item['metadata']['date'], '%Y-%m-%d') < none_date_dt],
-    #     key=lambda x: datetime.datetime.strptime(x['metadata']['date'], '%Y-%m-%d'),
-    #     reverse=True
-    # )[:max_prev_files]
-
     # Получение предыдущих документов из кэша, ближайших по дате
     prev_cache = sorted(
         [item for item in cache if
-         item['metadata']['next_bar'] != "None" and item['metadata']['date'] < none_date],
-        key=lambda x: x['metadata']['date'], reverse=True
+         item['metadata']['next_bar'] != "None" and
+         datetime.datetime.strptime(item['metadata']['date'], '%Y-%m-%d') < none_date_dt],
+        key=lambda x: datetime.datetime.strptime(x['metadata']['date'], '%Y-%m-%d'),
+        reverse=True
     )[:max_prev_files]  # Ограничиваем max_prev_files ближайшими датами
+
+    # # Получение предыдущих документов из кэша, ближайших по дате
+    # prev_cache = sorted(
+    #     [item for item in cache if
+    #      item['metadata']['next_bar'] != "None" and item['metadata']['date'] < none_date],
+    #     key=lambda x: x['metadata']['date'], reverse=True
+    # )[:max_prev_files]  # Ограничиваем max_prev_files ближайшими датами
 
     if len(prev_cache) < min_prev_files:
         logger.error(f"Недостаточно предыдущих документов для даты {none_date}: {len(prev_cache)}")

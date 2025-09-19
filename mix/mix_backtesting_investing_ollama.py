@@ -251,7 +251,7 @@ def main(max_prev_files: int = 8):
     # Статистика
     if total_predictions > 0:
         accuracy = (correct_predictions / total_predictions) * 100
-        logger.info(f"\nОбщая точность: {accuracy:.2f}% ({correct_predictions}/{total_predictions})")
+        logger.info(f"Общая точность: {accuracy:.2f}% ({correct_predictions}/{total_predictions})")
         if not results_df.empty:
             logger.info(
                 f"Итоговый накопительный для {min_prev_files}/{max_prev_files} результат: "

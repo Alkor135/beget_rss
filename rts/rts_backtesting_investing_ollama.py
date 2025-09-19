@@ -17,6 +17,7 @@ import yaml
 import sqlite3
 from langchain_core.documents import Document
 from chromadb.utils.embedding_functions import OllamaEmbeddingFunction
+import datetime
 import logging
 
 # Параметры
@@ -64,27 +65,34 @@ def cosine_similarity(vec1, vec2):
 
 def load_markdown_files(directory):
     """Загружает все MD-файлы из директории, сортирует по дате (имени файла)."""
+    # Получаем список всех .md файлов в указанной директории и сортируем их по имени файла (имя = дата)
     files = sorted(directory.glob("*.md"), key=lambda f: f.stem)  # Сортировка по дате ascending
-    documents = []
+    documents = []  # Список для хранения объектов Document
     for file_path in files:
+        # Открываем файл и читаем его содержимое
         with open(file_path, 'r', encoding='utf-8') as file:
             content = file.read()
+        # Проверяем, есть ли Front Matter (метаданные в формате YAML, ограниченные ---)
         if content.startswith('---'):
+            # Разделяем контент на части: до метаданных, саму метадату и основной текст
             parts = content.split('---', 2)
             if len(parts) >= 3:
-                metadata_yaml = parts[1].strip()
-                text_content = parts[2].strip()
+                metadata_yaml = parts[1].strip()  # Вторая часть — это YAML-метаданные
+                text_content = parts[2].strip()  # Третья часть — это основной текст документа
+                # Парсим YAML в словарь Python
                 metadata = yaml.safe_load(metadata_yaml) or {}
+                # Формируем новый словарь метаданных, преобразуя значения в строки и добавляя дополнительную информацию
                 metadata_str = {
-                    "next_bar": str(metadata.get("next_bar", "unknown")),
-                    "date_min": str(metadata.get("date_min", "unknown")),
-                    "date_max": str(metadata.get("date_max", "unknown")),
-                    "source": file_path.name,
-                    "date": file_path.stem
+                    "next_bar": str(metadata.get("next_bar", "unknown")),  # Направление следующего бара (up/down/None(для текущей даты))
+                    "date_min": str(metadata.get("date_min", "unknown")),  # Минимальная дата
+                    "date_max": str(metadata.get("date_max", "unknown")),  # Максимальная дата
+                    "source": file_path.name,  # Имя файла (исходник)
+                    "date": file_path.stem  # Имя файла без расширения (предполагается, что это дата)
                 }
+                # Создаём объект Document с текстом и метаданными и добавляем его в список
                 doc = Document(page_content=text_content, metadata=metadata_str)
                 documents.append(doc)
-    return documents
+    return documents  # Возвращаем список документов
 
 def load_quotes(path_db_quote):
     """Читает таблицу Futures из базы данных котировок и возвращает DataFrame с next_bar_pips."""
@@ -192,11 +200,27 @@ def main(max_prev_files: int = 8):
             logger.error(f"Эмбеддинг для даты {test_date} не найден в кэше.")
             continue
 
-        # Получение предыдущих документов из кэша, ближайших по дате
+        # Преобразование даты в формат datetime
+        try:
+            test_date_dt = datetime.datetime.strptime(test_date, '%Y-%m-%d')
+        except ValueError:
+            logger.error(f"Некорректный формат даты: {test_date}")
+            return
+
+        # Получение предыдущих документов из кэша
         prev_cache = sorted(
-            [item for item in cache if item['metadata']['date'] < test_date],
-            key=lambda x: x['metadata']['date'], reverse=True
-        )[:max_prev_files]  # Ограничиваем max_prev_files ближайшими датами
+            [item for item in cache if
+             item['metadata']['next_bar'] != "None" and
+             datetime.datetime.strptime(item['metadata']['date'], '%Y-%m-%d') < test_date_dt],
+            key=lambda x: datetime.datetime.strptime(x['metadata']['date'], '%Y-%m-%d'),
+            reverse=True
+        )[:max_prev_files]  # Ограничиваем max_prev_files предыдущими датами
+
+        # # Получение предыдущих документов из кэша, ближайших по дате
+        # prev_cache = sorted(
+        #     [item for item in cache if item['metadata']['date'] < test_date],
+        #     key=lambda x: x['metadata']['date'], reverse=True
+        # )[:max_prev_files]  # Ограничиваем max_prev_files ближайшими датами
 
         if len(prev_cache) < min_prev_files:
             logger.error(f"Недостаточно предыдущих документов для даты {test_date}: {len(prev_cache)}")
@@ -251,7 +275,7 @@ def main(max_prev_files: int = 8):
     # Статистика
     if total_predictions > 0:
         accuracy = (correct_predictions / total_predictions) * 100
-        logger.info(f"\nОбщая точность: {accuracy:.2f}% ({correct_predictions}/{total_predictions})")
+        logger.info(f"Общая точность: {accuracy:.2f}% ({correct_predictions}/{total_predictions})")
         if not results_df.empty:
             logger.info(
                 f"Итоговый накопительный для {min_prev_files}/{max_prev_files} результат: "
