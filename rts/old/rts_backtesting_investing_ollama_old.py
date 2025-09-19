@@ -1,5 +1,7 @@
 """
 Скрипт для ретроспективного предсказания (backtesting) на основе markdown-файлов с новостями.
+Кэширует эмбеддинги в pickle-файл для избежания повторного создания ChromaDB.
+Проверяет актуальность кэша при изменении или добавлении markdown-файлов.
 Ограничивает количество предыдущих файлов для предсказаний параметром max_prev_files.
 Добавляет финансовый результат в пунктах (next_bar_pips) и
 накопительный результат (cumulative_next_bar_pips).
@@ -14,6 +16,7 @@ import numpy as np
 import yaml
 import sqlite3
 from langchain_core.documents import Document
+from chromadb.utils.embedding_functions import OllamaEmbeddingFunction
 import datetime
 import logging
 
@@ -73,10 +76,6 @@ def load_markdown_files(directory):
         # Открываем файл и читаем его содержимое
         with open(file_path, 'r', encoding='utf-8') as file:
             content = file.read()
-
-        # >>> Считаем md5 от всего содержимого файла (YAML + текст)
-        md5_hash = hashlib.md5(content.encode('utf-8')).hexdigest()
-
         # Проверяем, есть ли Front Matter (метаданные в формате YAML, ограниченные ---)
         if content.startswith('---'):
             # Разделяем контент на части: до метаданных, саму метадату и основной текст
@@ -86,14 +85,13 @@ def load_markdown_files(directory):
                 text_content = parts[2].strip()  # Третья часть — это основной текст документа
                 # Парсим YAML в словарь Python
                 metadata = yaml.safe_load(metadata_yaml) or {}
-                # Формируем новый словарь метаданных
+                # Формируем новый словарь метаданных, преобразуя значения в строки и добавляя дополнительную информацию
                 metadata_str = {
                     "next_bar": str(metadata.get("next_bar", "unknown")),  # Направление следующего бара (up/down/None(для текущей даты))
                     "date_min": str(metadata.get("date_min", "unknown")),  # Минимальная дата
                     "date_max": str(metadata.get("date_max", "unknown")),  # Максимальная дата
                     "source": file_path.name,  # Имя файла (исходник)
-                    "date": file_path.stem,  # Имя файла без расширения (предполагается, что это дата)
-                    "md5": md5_hash  # >>> Добавляем md5 для идентификации документа
+                    "date": file_path.stem  # Имя файла без расширения (предполагается, что это дата)
                 }
                 # Создаём объект Document с текстом и метаданными и добавляем его в список
                 doc = Document(page_content=text_content, metadata=metadata_str)
@@ -114,27 +112,59 @@ def load_quotes(path_db_quote):
     df = df.dropna(subset=['next_bar_pips'])
     return df[['TRADEDATE', 'next_bar_pips']].set_index('TRADEDATE')
 
-def load_embeddings_from_cache(cache_file):
-    """Загружает эмбеддинги только из готового pickle-файла.
-    Если файл отсутствует — завершает выполнение с ошибкой.
-    """
+def cache_is_valid(documents, cache_file):
+    """Проверяет, актуален ли кэш эмбеддингов."""
     if not cache_file.exists():
-        logger.error(f"Ошибка: файл кэша {cache_file} не найден. "
-                     f"Создание нового кэша запрещено для режима бэктестинга.")
-        exit(1)
+        return False
 
-    try:
+    cache_mtime = cache_file.stat().st_mtime
+    current_files = {doc.metadata['source'] for doc in documents}
+
+    # Загружаем кэш для проверки
+    with open(cache_file, 'rb') as f:
+        cache = pickle.load(f)
+
+    cache_files = {item['metadata']['source'] for item in cache}
+
+    # Проверяем, совпадают ли наборы файлов
+    if current_files != cache_files:
+        logger.info("Кэш устарел: изменился набор markdown-файлов.")
+        return False
+
+    # Проверяем, не изменились ли файлы
+    for doc in documents:
+        file_path = md_path / doc.metadata['source']
+        if file_path.stat().st_mtime > cache_mtime:
+            logger.info(f"Кэш устарел: файл {file_path.name} был изменён.")
+            return False
+
+    return True
+
+def cache_embeddings(documents, cache_file, model_name, url_ai):
+    """Вычисляет и кэширует эмбеддинги всех документов в pickle-файл."""
+    if cache_is_valid(documents, cache_file):
+        logger.info(f"Загрузка кэша эмбеддингов из {cache_file}")
         with open(cache_file, 'rb') as f:
             cache = pickle.load(f)
-        logger.info(f"Эмбеддинги успешно загружены из {cache_file}")
         return cache
-    except Exception as e:
-        logger.error(f"Ошибка при загрузке кэша эмбеддингов: {e}")
-        exit(1)
 
+    logger.info("Вычисление эмбеддингов...")
+    ef = OllamaEmbeddingFunction(model_name=model_name, url=url_ai)
+    cache = []
+    for doc in documents:
+        embedding = ef([doc.page_content])[0]
+        cache.append({
+            'id': hashlib.md5(doc.page_content.encode()).hexdigest(),
+            'embedding': embedding,
+            'metadata': doc.metadata
+        })
+    with open(cache_file, 'wb') as f:
+        pickle.dump(cache, f)
+    logger.info(f"Эмбеддинги сохранены в {cache_file}")
+    return cache
 
 def main(max_prev_files: int = 8):
-    """Проводит backtesting: использует только готовый pickle с эмбеддингами."""
+    """Проводит backtesting: для каждой тестовой даты симулирует предсказание с использованием кэша."""
     # Загрузка котировок
     if not path_db_quote.exists():
         logger.error(f"Ошибка: Файл базы данных котировок не найден: {path_db_quote}")
@@ -147,8 +177,8 @@ def main(max_prev_files: int = 8):
         logger.error(f"Недостаточно файлов: {len(documents)}. Требуется минимум {min_prev_files + 1}.")
         exit(1)
 
-    # ⚡ Загружаем эмбеддинги только из pkl (без пересоздания!)
-    cache = load_embeddings_from_cache(cache_file)
+    # Кэширование эмбеддингов
+    cache = cache_embeddings(documents, cache_file, model_name, url_ai)
 
     results = []
     total_predictions = 0
@@ -164,46 +194,58 @@ def main(max_prev_files: int = 8):
             continue
 
         # Получение эмбеддинга тестовой даты из кэша
-        test_id = test_doc.metadata.get("md5")  # >>> Берём md5 прямо из метаданных, а не пересчитываем
-        test_embedding = next((item['embedding'] for item in cache if item['id'] == test_id), None)
-
+        test_id = hashlib.md5(test_doc.page_content.encode()).hexdigest()
+        test_embedding = None
+        for item in cache:
+            if item['id'] == test_id:
+                test_embedding = item['embedding']
+                break
         if test_embedding is None:
-            logger.error(f"Эмбеддинг для даты {test_date} (md5={test_id}) не найден в кэше.")
+            logger.error(f"Эмбеддинг для даты {test_date} не найден в кэше.")
             continue
 
-        # Преобразование даты
+        # Преобразование даты в формат datetime
         try:
             test_date_dt = datetime.datetime.strptime(test_date, '%Y-%m-%d')
         except ValueError:
             logger.error(f"Некорректный формат даты: {test_date}")
             return
 
-        # Предыдущие документы (по дате, не больше max_prev_files)
+        # Получение предыдущих документов из кэша
         prev_cache = sorted(
             [item for item in cache if
              item['metadata']['next_bar'] != "None" and
              datetime.datetime.strptime(item['metadata']['date'], '%Y-%m-%d') < test_date_dt],
             key=lambda x: datetime.datetime.strptime(x['metadata']['date'], '%Y-%m-%d'),
             reverse=True
-        )[:max_prev_files]
+        )[:max_prev_files]  # Ограничиваем max_prev_files предыдущими датами
+
+        # # Получение предыдущих документов из кэша, ближайших по дате
+        # prev_cache = sorted(
+        #     [item for item in cache if item['metadata']['date'] < test_date],
+        #     key=lambda x: x['metadata']['date'], reverse=True
+        # )[:max_prev_files]  # Ограничиваем max_prev_files ближайшими датами
 
         if len(prev_cache) < min_prev_files:
             logger.error(f"Недостаточно предыдущих документов для даты {test_date}: {len(prev_cache)}")
             continue
 
-        # Вычисляем сходства
+        # Вычисление сходств
         similarities = [
             (cosine_similarity(test_embedding, item['embedding']) * 100, item['metadata'])
             for item in prev_cache
         ]
+
+        # Сортировка по убыванию сходства
         similarities.sort(key=lambda x: x[0], reverse=True)
 
-        # Ближайший по сходству документ
+        # Ближайший документ
         if similarities:
             closest_similarity, closest_metadata = similarities[0]
             predicted_next_bar = closest_metadata['next_bar']
             is_correct = predicted_next_bar == real_next_bar
 
+            # Получение next_bar_pips из базы котировок
             try:
                 next_bar_pips_value = quotes_df.loc[test_date, 'next_bar_pips']
                 next_bar_pips = abs(next_bar_pips_value) if is_correct else -abs(next_bar_pips_value)
@@ -224,28 +266,34 @@ def main(max_prev_files: int = 8):
             if is_correct:
                 correct_predictions += 1
 
-            logger.info(
-                f"Дата: {test_date}, Предсказание: {predicted_next_bar}, "
-                f"Реальное: {real_next_bar}, Сходство: {closest_similarity:.2f}%, "
-                f"Правильно: {is_correct}, next_bar_pips: {next_bar_pips}"
-            )
+            logger.info(f"Дата: {test_date}, Предсказание: {predicted_next_bar}, Реальное: {real_next_bar}, "
+                  f"Сходство: {closest_similarity:.2f}%, Правильно: {is_correct}, next_bar_pips: {next_bar_pips}")
 
-    # Сохраняем результаты
+    # Создание DataFrame и добавление накопительного результата
     results_df = pd.DataFrame(results)
     if not results_df.empty:
         results_df['cumulative_next_bar_pips'] = results_df['next_bar_pips'].cumsum()
+    else:
+        logger.info("Нет результатов для сохранения.")
 
-        accuracy = (correct_predictions / total_predictions) * 100 if total_predictions > 0 else 0
+    # Статистика
+    if total_predictions > 0:
+        accuracy = (correct_predictions / total_predictions) * 100
         logger.info(f"Общая точность: {accuracy:.2f}% ({correct_predictions}/{total_predictions})")
-        logger.info(
-            f"Итоговый накопительный результат: "
-            f"{results_df['cumulative_next_bar_pips'].iloc[-1]:.2f} пунктов"
-        )
+        if not results_df.empty:
+            logger.info(
+                f"Итоговый накопительный для {min_prev_files}/{max_prev_files} результат: "
+                f"{results_df['cumulative_next_bar_pips'].iloc[-1]:.2f} пунктов"
+            )
+    else:
+        logger.info("Нет предсказаний для оценки.")
 
+    # Сохранение результатов в CSV и XLSX
+    if not results_df.empty:
         results_df.to_excel(result_file, index=False, engine='openpyxl')
         logger.info(f"Результаты сохранены в {result_file}")
     else:
-        logger.error("Нет результатов для сохранения.")
+        logger.error("Нет результатов для сохранения в файл.")
 
 if __name__ == '__main__':
     main(max_prev_files=max_prev_files)

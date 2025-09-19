@@ -102,34 +102,34 @@ def load_markdown_files(directory):
         documents = []  # Создаём пустой список для хранения объектов Document langchain.
         for file_path in files:
             try:
-                # Открываем markdown-файл в режиме чтения с кодировкой UTF-8.
+                # Открываем файл в режиме чтения с кодировкой UTF-8.
                 with open(file_path, 'r', encoding='utf-8') as file:
-                    content = file.read()
-                # Вычисляем MD5-хэш содержимого файла
+                    content = file.read()  # Считываем всё содержимое файла.
+                # Вычисляем MD5-хэш содержимого файла для контроля целостности.
                 md5_hash = hashlib.md5(content.encode('utf-8')).hexdigest()
+                # Логируем хэш файла.
                 logger.info(f"MD5 хэш файла {file_path.name}: {md5_hash}")
                 # Извлекаем текст и метаданные из содержимого с помощью функции parse_metadata.
                 text_content, metadata = parse_metadata(content, file_path)
-                # Сохраняем md5 в метаданные для дальнейшей проверки изменений
-                metadata["md5"] = md5_hash
                 # Создаём объект Document и добавляем его в список.
                 documents.append(Document(page_content=text_content, metadata=metadata))
             except Exception as e:
+                # Если произошла ошибка при обработке конкретного файла, логируем её и продолжаем выполнение.
                 logger.error(f"Ошибка при чтении файла {file_path}: {str(e)}")
                 continue
+        # Логируем количество успешно загруженных markdown-файлов.
         logger.info(f"Загружено {len(documents)} markdown-файлов")
         return documents  # Возвращаем список объектов Document.
     except Exception as e:
+        # Если произошла ошибка при доступе к директории или глобальном процессе загрузки — логируем и возвращаем пустой список.
         logger.error(f"Ошибка при загрузке файлов из {directory}: {str(e)}")
         return []
 
 def cache_embeddings(documents, cache_file, model_name, url_ai):
     """Кэширует эмбеддинги новых и изменённых файлов."""
-    ef = OllamaEmbeddingFunction(model_name=model_name, url=url_ai)
-
-    # Текущее состояние файлов (ключ = имя файла)
+    ef = OllamaEmbeddingFunction(model_name=model_name, url=url_ai)  # Без тайм-аута
     current_files = {
-        doc.metadata['source']: (doc, doc.metadata["md5"])
+        doc.metadata['source']: (doc, hashlib.md5(doc.page_content.encode()).hexdigest())
         for doc in documents
     }
 
@@ -138,25 +138,16 @@ def cache_embeddings(documents, cache_file, model_name, url_ai):
         try:
             with open(cache_file, 'rb') as f:
                 cache = pickle.load(f)
-
-            # Фильтруем кэш: оставляем только те записи, которые не изменились
-            cache = [
-                item for item in cache
-                if item['metadata']['source'] in current_files
-                and item['metadata'].get("md5") == current_files[item['metadata']['source']][1]
-            ]
+            cache = [item for item in cache if
+                     item['metadata']['source'] in current_files and
+                     item['id'] == current_files[item['metadata']['source']][1]]
             logger.info(f"Загружен кэш с {len(cache)} записями")
         except Exception as e:
             logger.error(f"Ошибка при загрузке кэша из {cache_file}: {str(e)}")
             cache = []
 
-    cached_sources_md5 = { (item['metadata']['source'], item['metadata'].get("md5")) for item in cache }
-
-    # Новые или изменённые документы
-    new_docs = [
-        doc for doc in documents
-        if (doc.metadata['source'], doc.metadata["md5"]) not in cached_sources_md5
-    ]
+    cached_sources = {item['metadata']['source'] for item in cache}
+    new_docs = [doc for doc in documents if doc.metadata['source'] not in cached_sources]
 
     if new_docs:
         logger.info(f"Вычисление эмбеддингов для {len(new_docs)} новых/изменённых файлов")
@@ -169,9 +160,10 @@ def cache_embeddings(documents, cache_file, model_name, url_ai):
                 embeddings = ef(batch_contents)
                 for j, doc in enumerate(batch_docs):
                     embedding = np.array(embeddings[j], dtype=np.float64)
+                    # Логируем первые 5 элементов эмбеддинга
                     logger.info(f"Эмбеддинг для {doc.metadata['source']}: {embedding[:5]}")
                     cache.append({
-                        'id': doc.metadata["md5"],  # теперь это md5 из метаданных
+                        'id': hashlib.md5(doc.page_content.encode()).hexdigest(),
                         'embedding': embeddings[j],
                         'metadata': doc.metadata
                     })
@@ -198,9 +190,7 @@ def print_prediction(none_date, prev_files, predicted_next_bar, closest_similari
         f"Процент сходства: {closest_similarity:.2f}%",
         "Метаданные ближайшего похожего документа:"
     ]
-    # Добавляем все ключи из метаданных, включая md5
-    for key in sorted(closest_metadata.keys()):
-        output.append(f"  {key}: {closest_metadata[key]}")
+    output.extend(f"  {key}: {closest_metadata[key]}" for key in sorted(closest_metadata.keys()))
     return output
 
 def main(max_prev_files: int = 7):
@@ -228,13 +218,10 @@ def main(max_prev_files: int = 7):
     output_file.unlink(missing_ok=True)
     logger.info(f"Удален старый файл {output_file}, если он был.")
 
-    # Получаем md5 документа напрямую из метаданных
-    none_id = none_doc.metadata["md5"]
-
-    # Ищем эмбеддинг в кэше
+    none_id = hashlib.md5(none_doc.page_content.encode()).hexdigest()
     none_embedding = next((item['embedding'] for item in cache if item['id'] == none_id), None)
     if none_embedding is None:
-        logger.error(f"Эмбеддинг для даты {none_date} (md5={none_id}) не найден в кэше.")
+        logger.error(f"Эмбеддинг для даты {none_date} не найден в кэше.")
         return
 
     # Преобразование none_date в datetime
@@ -251,7 +238,14 @@ def main(max_prev_files: int = 7):
          datetime.datetime.strptime(item['metadata']['date'], '%Y-%m-%d') < none_date_dt],
         key=lambda x: datetime.datetime.strptime(x['metadata']['date'], '%Y-%m-%d'),
         reverse=True
-    )[:max_prev_files]
+    )[:max_prev_files]  # Ограничиваем max_prev_files ближайшими датами
+
+    # # Получение предыдущих документов из кэша, ближайших по дате
+    # prev_cache = sorted(
+    #     [item for item in cache if
+    #      item['metadata']['next_bar'] != "None" and item['metadata']['date'] < none_date],
+    #     key=lambda x: x['metadata']['date'], reverse=True
+    # )[:max_prev_files]  # Ограничиваем max_prev_files ближайшими датами
 
     if len(prev_cache) < min_prev_files:
         logger.error(f"Недостаточно предыдущих документов для даты {none_date}: {len(prev_cache)}")
@@ -259,35 +253,28 @@ def main(max_prev_files: int = 7):
 
     # Вывод списка файлов для сравнения
     prev_files = [item['metadata']['source'] for item in prev_cache]
-
     # Вычисление сходств
-    similarities = [
-        (cosine_similarity(none_embedding, item['embedding']) * 100, item['metadata'])
-        for item in prev_cache
-    ]
+    similarities = [(cosine_similarity(none_embedding, item['embedding']) * 100, item['metadata'])
+                   for item in prev_cache]
+    # Сортировка по убыванию сходства
     similarities.sort(key=lambda x: x[0], reverse=True)
 
     try:
         with open(output_file, 'w', encoding='utf-8') as f:
             with redirect_stdout(f):
+                # print(f"\n Предсказание для даты {none_date} (next_bar='None'), {max_prev_files=}:")
+                # print(f"Файлы для сравнения: {', '.join(prev_files)}")
                 if similarities:
                     closest_similarity, closest_metadata = similarities[0]
                     predicted_next_bar = closest_metadata['next_bar']
-                    for line in print_prediction(
-                        none_date, prev_files, predicted_next_bar,
-                        closest_similarity, closest_metadata, output_file
-                    ):
+                    for line in print_prediction(none_date, prev_files, predicted_next_bar, closest_similarity, closest_metadata, output_file):
                         print(line)
                 else:
                     print("Нет похожих документов для предсказания.")
         logger.info(f"Результаты сохранены в {output_file}")
 
-        if similarities:
-            for line in print_prediction(
-                none_date, prev_files, predicted_next_bar,
-                closest_similarity, closest_metadata, output_file
-            ):
-                logger.info(line)
+        for line in print_prediction(none_date, prev_files, predicted_next_bar, closest_similarity, closest_metadata, output_file):
+            logger.info(line)
     except Exception as e:
         logger.error(f"Ошибка при записи в файл {output_file}: {str(e)}")
 
