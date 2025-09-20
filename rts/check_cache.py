@@ -13,13 +13,24 @@ import sqlite3
 from pathlib import Path
 import hashlib
 import logging
+import yaml
+
+# Путь к settings.yaml в той же директории, что и скрипт
+SETTINGS_FILE = Path(__file__).parent / "settings.yaml"
+
+# Чтение настроек
+with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
+    settings = yaml.safe_load(f)
 
 # ==== Параметры ====
-ticker = 'RTS'
+ticker = settings['ticker']
 ticker_lc = ticker.lower()
-cache_file = Path(fr'C:\Users\Alkor\PycharmProjects\beget_rss\{ticker_lc}\{ticker_lc}_embeddings_investing_ollama.pkl')
-path_db_quote = Path(fr'C:\Users\Alkor\gd\data_quote_db\{ticker}_futures_day_2025_21-00.db')
-md_path = Path(fr'C:\Users\Alkor\gd\md_{ticker_lc}_investing')  # Путь к markdown-файлам
+provider = settings['provider']
+cache_file = Path(  # Путь к кэшу
+    settings['cache_file'].replace('{ticker_lc}', ticker_lc).replace('{provider}', provider))
+path_db_quote = Path(settings['path_db_quote'].replace('{ticker}', ticker))
+md_path = Path(  # Путь к markdown-файлам
+    settings['md_path'].replace('{ticker_lc}', ticker_lc).replace('{provider}', provider))
 
 # ==== Цвета ANSI ====
 GREEN = "\033[32m"

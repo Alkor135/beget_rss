@@ -11,19 +11,28 @@ import sqlite3
 from pathlib import Path
 from datetime import datetime
 import logging
+import yaml
 
-# Параметры
-ticker: str = 'RTS'  # Тикер фьючерса
-ticker_lc: str = 'rts'  # Тикер фьючерса в нижнем регистре
+# Путь к settings.yaml в той же директории, что и скрипт
+SETTINGS_FILE = Path(__file__).parent / "settings.yaml"
+
+# Чтение настроек
+with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
+    settings = yaml.safe_load(f)
+
+# ==== Параметры ====
+ticker = settings['ticker']
+ticker_lc = ticker.lower()
+provider = settings['provider']  # Провайдер RSS новостей
 # Путь к файлу БД с минутными котировками скаченными с MOEX ISS API
-path_db_minutes: Path = Path(rf'C:\Users\Alkor\gd\data_quote_db\{ticker}_futures_minute_2025.db')
+path_db_minutes = Path(settings['path_db_minute'].replace('{ticker}', ticker))
 # Путь к файлу БД с дневными котировками (с 21:00 предыдущей сессии)
-path_db_day: Path = Path(rf'C:\Users\Alkor\gd\data_quote_db\{ticker}_futures_day_2025_21-00.db')
-time_start = '21:00:00'  # Время старта поиска минутных баров в предыдущую сессию
-time_end = '20:59:59'  # Время окончания поиска минутных баров за текущую сессию
+path_db_day = Path(settings['path_db_day'].replace('{ticker}', ticker))
+time_start = settings['time_start']  # Время старта поиска минутных баров за предыдущую сессию
+time_end = settings['time_end']  # Время окончания поиска минутных баров за текущую сессию
 log_file = Path(
-    fr'C:\Users\Alkor\gd\predict_ai\{ticker_lc}_investing_ollama\log'
-    fr'\{ticker_lc}_21_00_convert_minutes_to_days.txt')
+    fr'C:\Users\Alkor\gd\predict_ai\{ticker_lc}_{provider}_ollama\log'  # Путь к папке логов
+    fr'\{ticker_lc}_21_00_convert_minutes_to_days.txt')  # Путь к лог-файлу
 
 # Настройка логирования: вывод в консоль и в файл, файл перезаписывается
 log_file.parent.mkdir(parents=True, exist_ok=True)

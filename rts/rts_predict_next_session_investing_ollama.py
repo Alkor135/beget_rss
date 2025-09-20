@@ -13,27 +13,38 @@ from pathlib import Path
 import pickle
 import hashlib
 import numpy as np
-import yaml
 from langchain_core.documents import Document
 from chromadb.utils.embedding_functions import OllamaEmbeddingFunction
 from contextlib import redirect_stdout
 import datetime
 import logging
+import yaml
 
-# Параметры
-ticker_lc = 'rts'  # Тикер в нижнем регистре
-md_path = Path(fr'C:\Users\Alkor\gd\md_{ticker_lc}_investing')  # Путь к папке с MD-файлами
-cache_file = Path(  # Путь к файлу кэша
-    fr'C:\Users\Alkor\PycharmProjects\beget_rss\{ticker_lc}'  # Папка для кэша
-    fr'\{ticker_lc}_embeddings_investing_ollama.pkl')  # Имя файла кэша
-model_name = "bge-m3"  # Ollama модель
-url_ai = "http://localhost:11434/api/embeddings"  # Ollama API без тайм-аута
-min_prev_files = 4  # Минимальное количество предыдущих файлов
-max_prev_files = 7  # Максимальное количество предыдущих файлов
-output_dir = Path(fr'C:\Users\Alkor\gd\predict_ai\{ticker_lc}_investing_ollama')  # Путь к папке с результатами
+# Путь к settings.yaml в той же директории, что и скрипт
+SETTINGS_FILE = Path(__file__).parent / "settings.yaml"
+
+# Чтение настроек
+with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
+    settings = yaml.safe_load(f)
+
+# ==== Параметры ====
+ticker = settings['ticker']
+ticker_lc = ticker.lower()
+provider = settings['provider']  # Провайдер RSS новостей
+url_ai = settings['url_ai']  # Ollama API без тайм-аута
+model_name = settings['model_name']  # Ollama модель
+min_prev_files = settings['min_prev_files']  # Минимальное количество предыдущих файлов
+max_prev_files = settings['max_prev_files']  # Максимальное количество предыдущих файлов
+
+md_path = Path(  # Путь к markdown-файлам
+    settings['md_path'].replace('{ticker_lc}', ticker_lc).replace('{provider}', provider))
+cache_file = Path(
+    settings['cache_file'].replace('{ticker_lc}', ticker_lc).replace('{provider}', provider))
+output_dir = Path(  # Путь к папке с результатами
+    settings['output_dir'].replace('{ticker_lc}', ticker_lc).replace('{provider}', provider))
 log_file = Path(  # Путь к файлу лога
-    fr'C:\Users\Alkor\gd\predict_ai\{ticker_lc}_investing_ollama\log'  # Папка для логов
-    fr'\{ticker_lc}_predict_next_session_investing_ollama.txt')  # Имя файла лога
+    output_dir / 'log' / # Папка для логов
+    fr'{ticker_lc}_predict_next_session_{provider}_ollama.txt')  # Имя файла лога
 
 # Настройка логирования: вывод в консоль и в файл, файл перезаписывается
 log_file.parent.mkdir(parents=True, exist_ok=True)
@@ -226,9 +237,9 @@ def main(max_prev_files: int = 7):
     none_date = none_doc.metadata['date']
     output_file = output_dir / f"{none_date}.txt"
     output_file.unlink(missing_ok=True)
-    logger.info(f"Удален старый файл {output_file}, если он был.")
+    logger.info(f"Удален старый файл прогноза {output_file}, если он был.")
 
-    # Получаем md5 документа напрямую из метаданных
+    # Получаем md5 документа напрямую из метаданных (id = md5)
     none_id = none_doc.metadata["md5"]
 
     # Ищем эмбеддинг в кэше
@@ -289,7 +300,7 @@ def main(max_prev_files: int = 7):
             ):
                 logger.info(line)
     except Exception as e:
-        logger.error(f"Ошибка при записи в файл {output_file}: {str(e)}")
+        logger.error(f"Ошибка при записи в файл предсказания {output_file}: {str(e)}")
 
 if __name__ == '__main__':
     main(max_prev_files=max_prev_files)
