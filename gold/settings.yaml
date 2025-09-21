@@ -1,7 +1,7 @@
-# rts/settings.yaml
+# gold/settings.yaml
 
-ticker: 'RTS'
-ticker_lc: 'rts'
+ticker: 'GOLD'
+ticker_lc: 'gold'
 provider: 'investing'
 model_name: 'bge-m3'
 url_ai: 'http://localhost:11434/api/embeddings'

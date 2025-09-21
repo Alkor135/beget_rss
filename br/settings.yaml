@@ -1,7 +1,7 @@
-# rts/settings.yaml
+# br/settings.yaml
 
-ticker: 'RTS'
-ticker_lc: 'rts'
+ticker: 'BR'
+ticker_lc: 'br'
 provider: 'investing'
 model_name: 'bge-m3'
 url_ai: 'http://localhost:11434/api/embeddings'

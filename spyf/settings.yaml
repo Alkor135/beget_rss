@@ -1,7 +1,7 @@
-# rts/settings.yaml
+# spyf/settings.yaml
 
-ticker: 'RTS'
-ticker_lc: 'rts'
+ticker: 'SPYF'
+ticker_lc: 'spyf'
 provider: 'investing'
 model_name: 'bge-m3'
 url_ai: 'http://localhost:11434/api/embeddings'

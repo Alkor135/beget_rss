@@ -1,7 +1,12 @@
 """
-Скрипт для проведения backtests с разными значениями max_prev_files от 10 до 30.
+Скрипт для проведения backtests с разными значениями max_prev_files от 4 до 30.
 Сохраняет только даты и cumulative_next_bar_pips для каждого значения в один XLSX файл на один лист.
-Колонки: test_date, max_10, max_11, ..., max_30.
+Колонки: test_date, max_5, max_6, ..., max_30.
+
+⚡️Изменено:
+- Убрана логика пересчёта и обновления pkl (кэш должен существовать заранее).
+- Теперь кэш только читается. Если pkl нет → ошибка.
+- Учитывается, что в кэше id = md5(page_content).
 """
 
 import pandas as pd
@@ -9,22 +14,50 @@ from pathlib import Path
 import pickle
 import hashlib
 import numpy as np
-import yaml
 import sqlite3
 from langchain_core.documents import Document
-from chromadb.utils.embedding_functions import OllamaEmbeddingFunction
+import logging
+import yaml
 
-# Параметры
-ticker = 'GOLD'
-ticker_lc = 'gold'
-md_path = Path(fr'C:\Users\Alkor\gd\md_{ticker_lc}_investing')
-cache_file = Path(fr'C:\Users\Alkor\PycharmProjects\beget_rss\{ticker_lc}\{ticker_lc}_embeddings_investing_ollama.pkl')
-path_db_quote = Path(fr'C:\Users\Alkor\gd\data_quote_db\{ticker}_futures_day_2025_21-00.db')
-model_name = "bge-m3"
-url_ai = "http://localhost:11434/api/embeddings"
-min_prev_files = 4   # Минимальное количество предыдущих файлов для предсказаний
-# Итоговый XLSX файл
-output_file = fr'C:\Users\Alkor\PycharmProjects\beget_rss\{ticker_lc}\{ticker_lc}_backtest_results_multi_max_investing.xlsx'
+# Путь к settings.yaml в той же директории, что и скрипт
+SETTINGS_FILE = Path(__file__).parent / "settings.yaml"
+
+# Чтение настроек
+with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
+    settings = yaml.safe_load(f)
+
+# ==== Параметры ====
+ticker = settings['ticker']
+ticker_lc = ticker.lower()
+provider = settings['provider']  # Провайдер RSS новостей
+min_prev_files = settings['min_prev_files']  # Минимальное количество предыдущих файлов
+
+md_path = Path(  # Путь к markdown-файлам
+    settings['md_path'].replace('{ticker_lc}', ticker_lc).replace('{provider}', provider))
+cache_file = Path(
+    settings['cache_file'].replace('{ticker_lc}', ticker_lc).replace('{provider}', provider))
+path_db_day = Path(settings['path_db_day'].replace('{ticker}', ticker))
+output_dir = Path(  # Путь к папке с результатами
+    settings['output_dir'].replace('{ticker_lc}', ticker_lc).replace('{provider}', provider))
+log_file = Path(  # Путь к файлу лога
+    output_dir / 'log' / # Папка для логов
+    fr'{ticker_lc}_backtest_multi_max_{provider}.txt')
+output_file = Path(  # Итоговый XLSX файл
+    fr'C:\Users\Alkor\PycharmProjects\beget_rss\{ticker_lc}'
+    fr'\{ticker_lc}_backtest_results_multi_max_{provider}.xlsx')
+
+# Настройка логирования
+log_file.parent.mkdir(parents=True, exist_ok=True)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+logger.handlers = []
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+logger.addHandler(console_handler)
+file_handler = logging.FileHandler(log_file, mode='w', encoding='utf-8')
+file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+logger.addHandler(file_handler)
+
 
 def cosine_similarity(vec1, vec2):
     """Вычисляет косинусное сходство между двумя векторами."""
@@ -39,11 +72,15 @@ def cosine_similarity(vec1, vec2):
 
 def load_markdown_files(directory):
     """Загружает все MD-файлы из директории, сортирует по дате (имени файла)."""
-    files = sorted(directory.glob("*.md"), key=lambda f: f.stem)  # Сортировка по дате ascending
+    files = sorted(directory.glob("*.md"), key=lambda f: f.stem)
     documents = []
     for file_path in files:
         with open(file_path, 'r', encoding='utf-8') as file:
             content = file.read()
+
+        # ⚡ Добавляем md5 от всего содержимого файла (YAML + текст)
+        md5_hash = hashlib.md5(content.encode('utf-8')).hexdigest()
+
         if content.startswith('---'):
             parts = content.split('---', 2)
             if len(parts) >= 3:
@@ -55,7 +92,8 @@ def load_markdown_files(directory):
                     "date_min": str(metadata.get("date_min", "unknown")),
                     "date_max": str(metadata.get("date_max", "unknown")),
                     "source": file_path.name,
-                    "date": file_path.stem
+                    "date": file_path.stem,
+                    "md5": md5_hash  # ⚡ сохраняем md5 в метаданные
                 }
                 doc = Document(page_content=text_content, metadata=metadata_str)
                 documents.append(doc)
@@ -67,64 +105,25 @@ def load_quotes(path_db_quote):
         df = pd.read_sql_query("SELECT TRADEDATE, OPEN, CLOSE FROM Futures", conn)
     df = df.sort_values('TRADEDATE', ascending=True)
     df['TRADEDATE'] = df['TRADEDATE'].astype(str)
-    # Вычисляем финансовый результат за следующий день
-    df['next_bar_pips'] = df.apply(
-        lambda x: (x['CLOSE'] - x['OPEN']), axis=1
-    ).shift(-1)
-    # Удаляем строки с NaN в next_bar_pips, если нужно
+    df['next_bar_pips'] = df.apply(lambda x: (x['CLOSE'] - x['OPEN']), axis=1).shift(-1)
     df = df.dropna(subset=['next_bar_pips'])
     return df[['TRADEDATE', 'next_bar_pips']].set_index('TRADEDATE')
 
-def cache_is_valid(documents, cache_file):
-    """Проверяет, актуален ли кэш эмбеддингов."""
+
+def load_cache(cache_file):
+    """
+    Загружает готовый кэш эмбеддингов.
+    ⚡️Изменено: здесь больше нет пересчёта, только чтение.
+    """
     if not cache_file.exists():
-        return False
+        logger.error(f"Ошибка: кэш {cache_file} не найден. Сначала сгенерируй его другим скриптом.")
+        exit(1)
 
-    cache_mtime = cache_file.stat().st_mtime
-    current_files = {doc.metadata['source'] for doc in documents}
-
-    # Загружаем кэш для проверки
+    logger.info(f"Загрузка кэша эмбеддингов из {cache_file}")
     with open(cache_file, 'rb') as f:
         cache = pickle.load(f)
-
-    cache_files = {item['metadata']['source'] for item in cache}
-
-    # Проверяем, совпадают ли наборы файлов
-    if current_files != cache_files:
-        print("Кэш устарел: изменился набор markdown-файлов.")
-        return False
-
-    # Проверяем, не изменились ли файлы
-    for doc in documents:
-        file_path = md_path / doc.metadata['source']
-        if file_path.stat().st_mtime > cache_mtime:
-            print(f"Кэш устарел: файл {file_path.name} был изменён.")
-            return False
-
-    return True
-
-def cache_embeddings(documents, cache_file, model_name, url_ai):
-    """Вычисляет и кэширует эмбеддинги всех документов в pickle-файл."""
-    if cache_is_valid(documents, cache_file):
-        print(f"Загрузка кэша эмбеддингов из {cache_file}")
-        with open(cache_file, 'rb') as f:
-            cache = pickle.load(f)
-        return cache
-
-    print("Вычисление эмбеддингов...")
-    ef = OllamaEmbeddingFunction(model_name=model_name, url=url_ai)
-    cache = []
-    for doc in documents:
-        embedding = ef([doc.page_content])[0]
-        cache.append({
-            'id': hashlib.md5(doc.page_content.encode()).hexdigest(),
-            'embedding': embedding,
-            'metadata': doc.metadata
-        })
-    with open(cache_file, 'wb') as f:
-        pickle.dump(cache, f)
-    print(f"Эмбеддинги сохранены в {cache_file}")
     return cache
+
 
 def backtest_predictions(documents, cache, quotes_df, max_prev_files):
     """Проводит backtesting для заданного max_prev_files и возвращает DataFrame с test_date и cumulative_next_bar_pips."""
@@ -138,17 +137,13 @@ def backtest_predictions(documents, cache, quotes_df, max_prev_files):
         if real_next_bar == 'unknown' or real_next_bar == 'None':
             continue
 
-        # Получение эмбеддинга тестовой даты из кэша
-        test_id = hashlib.md5(test_doc.page_content.encode()).hexdigest()
-        test_embedding = None
-        for item in cache:
-            if item['id'] == test_id:
-                test_embedding = item['embedding']
-                break
+        # Получение эмбеддинга тестовой даты из кэша (по md5)
+        test_id = test_doc.metadata.get("md5")  # ⚡ теперь берём md5 из метаданных
+        test_embedding = next((item['embedding'] for item in cache if item['id'] == test_id), None)
         if test_embedding is None:
             continue
 
-        # Получение предыдущих документов из кэша, ближайших по дате
+        # Предыдущие документы из кэша
         prev_cache = sorted(
             [item for item in cache if item['metadata']['date'] < test_date],
             key=lambda x: x['metadata']['date'], reverse=True
@@ -162,8 +157,6 @@ def backtest_predictions(documents, cache, quotes_df, max_prev_files):
             (cosine_similarity(test_embedding, item['embedding']) * 100, item['metadata'])
             for item in prev_cache
         ]
-
-        # Сортировка по убыванию сходства
         similarities.sort(key=lambda x: x[0], reverse=True)
 
         # Ближайший документ
@@ -172,7 +165,6 @@ def backtest_predictions(documents, cache, quotes_df, max_prev_files):
             predicted_next_bar = closest_metadata['next_bar']
             is_correct = predicted_next_bar == real_next_bar
 
-            # Получение next_bar_pips из базы котировок
             try:
                 next_bar_pips_value = quotes_df.loc[test_date, 'next_bar_pips']
                 next_bar_pips = abs(next_bar_pips_value) if is_correct else -abs(next_bar_pips_value)
@@ -184,7 +176,6 @@ def backtest_predictions(documents, cache, quotes_df, max_prev_files):
                 'next_bar_pips': next_bar_pips
             })
 
-    # Создание DataFrame и добавление накопительного результата
     results_df = pd.DataFrame(results)
     if not results_df.empty:
         results_df['cumulative_next_bar_pips'] = results_df['next_bar_pips'].cumsum()
@@ -192,28 +183,28 @@ def backtest_predictions(documents, cache, quotes_df, max_prev_files):
     else:
         return pd.DataFrame()
 
+
 def main():
     # Загрузка котировок
-    if not path_db_quote.exists():
-        print(f"Ошибка: Файл базы данных котировок не найден: {path_db_quote}")
+    if not path_db_day.exists():
+        logger.error(f"Ошибка: Файл базы данных котировок не найден: {path_db_day}")
         exit(1)
-    quotes_df = load_quotes(path_db_quote)
+    quotes_df = load_quotes(path_db_day)
 
     # Загрузка markdown-файлов
     documents = load_markdown_files(md_path)
     if len(documents) < min_prev_files + 1:
-        print(f"Недостаточно файлов: {len(documents)}. Требуется минимум {min_prev_files + 1}.")
+        logger.error(f"Недостаточно файлов: {len(documents)}. Требуется минимум {min_prev_files + 1}.")
         exit(1)
 
-    # Кэширование эмбеддингов (один раз)
-    cache = cache_embeddings(documents, cache_file, model_name, url_ai)
+    # ⚡️Загрузка готового кэша (без пересчёта)
+    cache = load_cache(cache_file)
 
-    # Создание итогового DataFrame с колонкой test_date
+    # Создание итогового DataFrame
     all_results = pd.DataFrame()
 
-    # Диапазон max_prev_files от 10 до 30
-    for max_prev in range(5, 31):
-        print(f"Проводим backtest для max_prev_files = {max_prev}")
+    for max_prev in range(4, 31):  # от 4 до 30
+        logger.info(f"Проводим backtest для max_prev_files = {max_prev}")
         results_df = backtest_predictions(documents, cache, quotes_df, max_prev)
         if not results_df.empty:
             results_df = results_df.rename(columns={'cumulative_next_bar_pips': f'max_{max_prev}'})
@@ -222,12 +213,11 @@ def main():
             else:
                 all_results = all_results.merge(results_df, on='test_date', how='outer')
 
-    # Сохранение в XLSX
     if not all_results.empty:
         all_results.to_excel(output_file, index=False, engine='openpyxl')
-        print(f"Результаты сохранены в {output_file}")
+        logger.info(f"Результаты сохранены в {output_file}")
     else:
-        print("Нет результатов для сохранения.")
+        logger.error("Нет результатов для сохранения.")
 
 if __name__ == '__main__':
     main()

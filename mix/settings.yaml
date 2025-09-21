@@ -1,4 +1,4 @@
-# rts/settings.yaml
+# mix/settings.yaml
 
 ticker: 'MIX'
 ticker_lc: 'mix'
