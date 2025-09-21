@@ -25,15 +25,18 @@ with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
 ticker = settings['ticker']
 ticker_lc = ticker.lower()
 provider = settings['provider']  # Провайдер RSS новостей
+# Начальная дата для загрузки минутных данных
+start_date = datetime.strptime(settings['start_date_download_minutes'], "%Y-%m-%d").date()
+
 # Путь к базе данных с минутными барами фьючерсов
 path_db_minute = Path(settings['path_db_minute'].replace('{ticker}', ticker))
-# Начальная дата для загрузки данных
-start_date: date = datetime.strptime('2025-06-24', "%Y-%m-%d").date()
+output_dir = Path(  # Путь к папке с результатами
+    settings['output_dir'].replace('{ticker_lc}', ticker_lc).replace('{provider}', provider))
+log_file = Path(  # Путь к файлу лога
+    output_dir / 'log' / # Папка для логов
+    fr'\{ticker_lc}_download_minutes_to_db.txt')  # Путь к файлу логов
 
 # Настройка логирования: вывод в консоль и в файл, файл перезаписывается
-log_file = Path(  # Путь к файлу логов
-    fr'C:\Users\Alkor\gd\predict_ai\{ticker_lc}_{provider}_ollama\log'  # Путь к папке с логами
-    fr'\{ticker_lc}_download_minutes_to_db.txt')  # Путь к файлу логов
 log_file.parent.mkdir(parents=True, exist_ok=True)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

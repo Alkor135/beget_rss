@@ -24,13 +24,6 @@ with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
 ticker = settings['ticker']
 ticker_lc = ticker.lower()
 provider = settings['provider']  # Провайдер RSS новостей
-# Директория с БД дневных свечей с 21:00 предыдущей сессии до 21:00 даты свечи.
-path_db_day = Path(settings['path_db_day'].replace('{ticker}', ticker))
-# Директория с файлами БД новостей по месяцам
-db_news_dir = Path(settings['db_news_dir'].replace('{provider}', provider))
-# Директория для сохранения markdown-файлов с новостями с 21:00 МСК предыдущей торговой сессии
-md_path = Path(  # Путь к markdown-файлам
-    settings['md_path'].replace('{ticker_lc}', ticker_lc).replace('{provider}', provider))
 num_mds = settings['num_mds']  # Количество последних интервалов для сохранения в markdown файлы
 num_dbs = settings['num_dbs']  # Количество последних файлов БД новостей для обработки
 # Время с которого начинается поиск новостей за предыдущую сессию в БД
@@ -38,10 +31,20 @@ time_start = settings['time_start']
 # Время, которым заканчивается поиск новостей за текущую сессию в БД
 time_end = settings['time_end']
 
-# Настройка логирования: вывод в консоль и в файл, файл перезаписывается
+# Директория с БД дневных свечей с 21:00 предыдущей сессии до 21:00 даты свечи.
+path_db_day = Path(settings['path_db_day'].replace('{ticker}', ticker))
+# Директория с файлами БД новостей по месяцам
+db_news_dir = Path(settings['db_news_dir'].replace('{provider}', provider))
+# Директория для сохранения markdown-файлов с новостями с 21:00 МСК предыдущей торговой сессии
+md_path = Path(  # Путь к markdown-файлам
+    settings['md_path'].replace('{ticker_lc}', ticker_lc).replace('{provider}', provider))
+output_dir = Path(  # Путь к папке с результатами
+    settings['output_dir'].replace('{ticker_lc}', ticker_lc).replace('{provider}', provider))
 log_file = Path(  # Путь к файлу лога
-    fr'C:\Users\Alkor\gd\predict_ai\{ticker_lc}_{provider}_ollama\log'  # Путь к папке с логами
+    output_dir / 'log' / # Папка для логов
     fr'\{ticker_lc}_21_00_db_{provider}_month_to_md.txt')  # Файл лога
+
+# Настройка логирования: вывод в консоль и в файл, файл перезаписывается
 log_file.parent.mkdir(parents=True, exist_ok=True)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

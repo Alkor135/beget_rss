@@ -30,8 +30,11 @@ path_db_minutes = Path(settings['path_db_minute'].replace('{ticker}', ticker))
 path_db_day = Path(settings['path_db_day'].replace('{ticker}', ticker))
 time_start = settings['time_start']  # Время старта поиска минутных баров за предыдущую сессию
 time_end = settings['time_end']  # Время окончания поиска минутных баров за текущую сессию
-log_file = Path(
-    fr'C:\Users\Alkor\gd\predict_ai\{ticker_lc}_{provider}_ollama\log'  # Путь к папке логов
+
+output_dir = Path(  # Путь к папке с результатами
+    settings['output_dir'].replace('{ticker_lc}', ticker_lc).replace('{provider}', provider))
+log_file = Path(  # Путь к файлу лога
+    output_dir / 'log' / # Папка для логов
     fr'\{ticker_lc}_21_00_convert_minutes_to_days.txt')  # Путь к лог-файлу
 
 # Настройка логирования: вывод в консоль и в файл, файл перезаписывается

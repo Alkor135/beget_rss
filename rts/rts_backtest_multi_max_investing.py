@@ -1,5 +1,5 @@
 """
-Скрипт для проведения backtests с разными значениями max_prev_files от 5 до 30.
+Скрипт для проведения backtests с разными значениями max_prev_files от 4 до 30.
 Сохраняет только даты и cumulative_next_bar_pips для каждого значения в один XLSX файл на один лист.
 Колонки: test_date, max_5, max_6, ..., max_30.
 
@@ -14,26 +14,39 @@ from pathlib import Path
 import pickle
 import hashlib
 import numpy as np
-import yaml
 import sqlite3
 from langchain_core.documents import Document
 import logging
+import yaml
 
-# Параметры
-ticker: str = 'RTS'  # Тикер фьючерса
-ticker_lc: str = 'rts'  # Тикер фьючерса в нижнем регистре
-md_path = Path(fr'C:\Users\Alkor\gd\md_{ticker_lc}_investing')
+# Путь к settings.yaml в той же директории, что и скрипт
+SETTINGS_FILE = Path(__file__).parent / "settings.yaml"
+
+# Чтение настроек
+with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
+    settings = yaml.safe_load(f)
+
+# ==== Параметры ====
+ticker = settings['ticker']
+ticker_lc = ticker.lower()
+provider = settings['provider']  # Провайдер RSS новостей
+min_prev_files = settings['min_prev_files']  # Минимальное количество предыдущих файлов
+
+md_path = Path(  # Путь к markdown-файлам
+    settings['md_path'].replace('{ticker_lc}', ticker_lc).replace('{provider}', provider))
 cache_file = Path(
-    fr'C:\Users\Alkor\PycharmProjects\beget_rss\{ticker_lc}\{ticker_lc}_embeddings_investing_ollama.pkl')
-path_db_quote = Path(fr'C:\Users\Alkor\gd\data_quote_db\{ticker}_futures_day_2025_21-00.db')
-min_prev_files = 4   # Минимальное количество предыдущих файлов для предсказаний
-# Итоговый XLSX файл
-output_file = Path(
-    fr'C:\Users\Alkor\PycharmProjects\beget_rss\{ticker_lc}\{ticker_lc}_backtest_results_multi_max_investing.xlsx')
+    settings['cache_file'].replace('{ticker_lc}', ticker_lc).replace('{provider}', provider))
+path_db_day = Path(settings['path_db_day'].replace('{ticker}', ticker))
+output_dir = Path(  # Путь к папке с результатами
+    settings['output_dir'].replace('{ticker_lc}', ticker_lc).replace('{provider}', provider))
+log_file = Path(  # Путь к файлу лога
+    output_dir / 'log' / # Папка для логов
+    fr'{ticker_lc}_backtest_multi_max_{provider}.txt')
+output_file = Path(  # Итоговый XLSX файл
+    fr'C:\Users\Alkor\PycharmProjects\beget_rss\{ticker_lc}'
+    fr'\{ticker_lc}_backtest_results_multi_max_{provider}.xlsx')
 
 # Настройка логирования
-log_file = Path(
-    fr'C:\Users\Alkor\gd\predict_ai\{ticker_lc}_investing_ollama\log\{ticker_lc}_backtest_multi_max_investing.txt')
 log_file.parent.mkdir(parents=True, exist_ok=True)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -173,10 +186,10 @@ def backtest_predictions(documents, cache, quotes_df, max_prev_files):
 
 def main():
     # Загрузка котировок
-    if not path_db_quote.exists():
-        logger.error(f"Ошибка: Файл базы данных котировок не найден: {path_db_quote}")
+    if not path_db_day.exists():
+        logger.error(f"Ошибка: Файл базы данных котировок не найден: {path_db_day}")
         exit(1)
-    quotes_df = load_quotes(path_db_quote)
+    quotes_df = load_quotes(path_db_day)
 
     # Загрузка markdown-файлов
     documents = load_markdown_files(md_path)
@@ -190,7 +203,7 @@ def main():
     # Создание итогового DataFrame
     all_results = pd.DataFrame()
 
-    for max_prev in range(5, 31):  # от 5 до 30
+    for max_prev in range(4, 31):  # от 4 до 30
         logger.info(f"Проводим backtest для max_prev_files = {max_prev}")
         results_df = backtest_predictions(documents, cache, quotes_df, max_prev)
         if not results_df.empty:

@@ -28,7 +28,7 @@ ticker_lc = ticker.lower()
 provider = settings['provider']
 cache_file = Path(  # Путь к кэшу
     settings['cache_file'].replace('{ticker_lc}', ticker_lc).replace('{provider}', provider))
-path_db_quote = Path(settings['path_db_quote'].replace('{ticker}', ticker))
+path_db_day = Path(settings['path_db_day'].replace('{ticker}', ticker))
 md_path = Path(  # Путь к markdown-файлам
     settings['md_path'].replace('{ticker_lc}', ticker_lc).replace('{provider}', provider))
 
@@ -91,7 +91,7 @@ def load_md_files(md_path: Path):
 def main():
     # Загружаем кэш, БД и MD-файлы
     cache = load_cache(cache_file)
-    db_dates = load_db_dates(path_db_quote)
+    db_dates = load_db_dates(path_db_day)
     md_files = load_md_files(md_path)
 
     # Вывод содержимого кэша
