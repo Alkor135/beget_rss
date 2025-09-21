@@ -22,18 +22,19 @@ import logging
 
 # Параметры
 ticker_lc = 'rts'  # Тикер в нижнем регистре
-md_path = Path(fr'C:\Users\Alkor\gd\md_{ticker_lc}_investing')  # Путь к папке с MD-файлами
+provider = 'investing'  # Провайдер RSS новостей
+md_path = Path(fr'C:\Users\Alkor\gd\md_{ticker_lc}_{provider}')  # Путь к папке с MD-файлами
 cache_file = Path(  # Путь к файлу кэша
     fr'C:\Users\Alkor\PycharmProjects\beget_rss\{ticker_lc}'  # Папка для кэша
-    fr'\{ticker_lc}_embeddings_investing_ollama.pkl')  # Имя файла кэша
+    fr'\{ticker_lc}_embeddings_{provider}_ollama.pkl')  # Имя файла кэша
 model_name = "bge-m3"  # Ollama модель
 url_ai = "http://localhost:11434/api/embeddings"  # Ollama API без тайм-аута
 min_prev_files = 4  # Минимальное количество предыдущих файлов
 max_prev_files = 7  # Максимальное количество предыдущих файлов
-output_dir = Path(fr'C:\Users\Alkor\gd\predict_ai\{ticker_lc}_investing_ollama')  # Путь к папке с результатами
+output_dir = Path(fr'C:\Users\Alkor\gd\predict_ai\{ticker_lc}_{provider}_ollama')  # Путь к папке с результатами
 log_file = Path(  # Путь к файлу лога
-    fr'C:\Users\Alkor\gd\predict_ai\{ticker_lc}_investing_ollama\log'  # Папка для логов
-    fr'\{ticker_lc}_predict_next_session_investing_ollama.txt')  # Имя файла лога
+    fr'C:\Users\Alkor\gd\predict_ai\{ticker_lc}_{provider}_ollama\log'  # Папка для логов
+    fr'\{ticker_lc}_predict_next_session_{provider}_ollama.txt')  # Имя файла лога
 
 # Настройка логирования: вывод в консоль и в файл, файл перезаписывается
 log_file.parent.mkdir(parents=True, exist_ok=True)

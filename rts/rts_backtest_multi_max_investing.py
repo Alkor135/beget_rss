@@ -1,7 +1,7 @@
 """
 Скрипт для проведения backtests с разными значениями max_prev_files от 4 до 30.
 Сохраняет только даты и cumulative_next_bar_pips для каждого значения в один XLSX файл на один лист.
-Колонки: test_date, max_5, max_6, ..., max_30.
+Колонки: test_date, max_4, max_5, ..., max_30.
 
 ⚡️Изменено:
 - Убрана логика пересчёта и обновления pkl (кэш должен существовать заранее).
@@ -78,14 +78,15 @@ def load_markdown_files(directory):
         with open(file_path, 'r', encoding='utf-8') as file:
             content = file.read()
 
-        # ⚡ Добавляем md5 от всего содержимого файла (YAML + текст)
-        md5_hash = hashlib.md5(content.encode('utf-8')).hexdigest()
+        # # ⚡ Добавляем md5 от всего содержимого файла (YAML + текст)
+        md5_hash = hashlib.md5(content.encode('utf-8')).hexdigest()  # нового md5 разкомментить
 
         if content.startswith('---'):
             parts = content.split('---', 2)
             if len(parts) >= 3:
                 metadata_yaml = parts[1].strip()
                 text_content = parts[2].strip()
+                # md5_hash = hashlib.md5(text_content.encode('utf-8')).hexdigest()  # нового md5 закомментить
                 metadata = yaml.safe_load(metadata_yaml) or {}
                 metadata_str = {
                     "next_bar": str(metadata.get("next_bar", "unknown")),
