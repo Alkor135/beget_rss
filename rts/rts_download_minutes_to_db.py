@@ -34,7 +34,7 @@ output_dir = Path(  # Путь к папке с результатами
     settings['output_dir'].replace('{ticker_lc}', ticker_lc).replace('{provider}', provider))
 log_file = Path(  # Путь к файлу лога
     output_dir / 'log' / # Папка для логов
-    fr'\{ticker_lc}_download_minutes_to_db.txt')  # Путь к файлу логов
+    fr'{ticker_lc}_download_minutes_to_db.txt')  # Путь к файлу логов
 
 # Настройка логирования: вывод в консоль и в файл, файл перезаписывается
 log_file.parent.mkdir(parents=True, exist_ok=True)

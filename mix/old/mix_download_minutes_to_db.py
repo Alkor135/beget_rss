@@ -12,31 +12,18 @@ from datetime import datetime, timedelta, date, time
 import requests
 import pandas as pd
 import logging
-import yaml
 
-# Путь к settings.yaml в той же директории, что и скрипт
-SETTINGS_FILE = Path(__file__).parent / "settings.yaml"
-
-# Чтение настроек
-with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
-    settings = yaml.safe_load(f)
-
-# ==== Параметры ====
-ticker = settings['ticker']
-ticker_lc = ticker.lower()
-provider = settings['provider']  # Провайдер RSS новостей
-# Начальная дата для загрузки минутных данных
-start_date = datetime.strptime(settings['start_date_download_minutes'], "%Y-%m-%d").date()
-
+# Параметры
+ticker: str = 'MIX'  # Тикер фьючерса
+ticker_lc: str = 'mix'  # Тикер фьючерса в нижнем регистре
 # Путь к базе данных с минутными барами фьючерсов
-path_db_minute = Path(settings['path_db_minute'].replace('{ticker}', ticker))
-output_dir = Path(  # Путь к папке с результатами
-    settings['output_dir'].replace('{ticker_lc}', ticker_lc).replace('{provider}', provider))
-log_file = Path(  # Путь к файлу лога
-    output_dir / 'log' / # Папка для логов
-    fr'{ticker_lc}_download_minutes_to_db.txt')  # Путь к файлу логов
+path_db: Path = Path(rf'C:\Users\Alkor\gd\data_quote_db\{ticker}_futures_minute_2025.db')
+# Начальная дата для загрузки данных
+start_date: date = datetime.strptime('2025-06-02', "%Y-%m-%d").date()
 
 # Настройка логирования: вывод в консоль и в файл, файл перезаписывается
+log_file = Path(
+    fr'C:\Users\Alkor\gd\predict_ai\{ticker_lc}_investing_ollama\log\{ticker_lc}_download_minutes_to_db.txt')
 log_file.parent.mkdir(parents=True, exist_ok=True)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -265,7 +252,7 @@ def get_future_date_results(
 
 def main(
         ticker: str = ticker,
-        path_db: Path = path_db_minute,
+        path_db: Path = path_db,
         start_date: date = start_date) -> None:
     """
     Основная функция: подключается к базе данных, создает таблицы и загружает данные по фьючерсам.
@@ -316,4 +303,4 @@ def main(
 
 
 if __name__ == '__main__':
-    main(ticker, path_db_minute, start_date)
+    main(ticker, path_db, start_date)
