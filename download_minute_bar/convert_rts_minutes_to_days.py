@@ -9,6 +9,7 @@ import sqlite3
 from pathlib import Path
 from datetime import datetime, timedelta, time
 import logging
+import os
 import yaml
 
 # --- Чтение настроек ---
@@ -22,8 +23,8 @@ provider = settings['provider']
 output_dir = Path(settings['output_dir']).resolve()
 time_start = settings['time_start']  # например "21:00:00"
 time_end = settings['time_end']      # например "20:59:59"
-path_db_day = Path(settings['path_db_day'].replace('{ticker}', ticker)).resolve()
-minutes_db_dir = Path(settings['path_db_minute'].replace('{ticker}', ticker)).resolve()  # папка с годовыми БД
+path_db_day = Path(settings['path_db_day']).resolve()
+minutes_db_dir = Path(settings['path_db_minute']).resolve()  # папка с годовыми БД
 
 # --- Логирование ---
 log_file = output_dir / 'log' / f'{ticker_lc}_{provider}_convert_minutes_to_days.txt'
@@ -97,6 +98,9 @@ def iterate_minutes_dbs(minute_db_dir: Path, ticker: str):
 
 def main():
     # Подключаемся к дневной базе
+    print(f"Подключение к БД: {path_db_day}")
+
+    os.makedirs(os.path.dirname(path_db_day), exist_ok=True)
     connection_day = sqlite3.connect(str(path_db_day))
     cursor_day = connection_day.cursor()
     create_tables(connection_day)

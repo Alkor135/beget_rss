@@ -26,8 +26,6 @@ if isinstance(start_date_raw, date):
     start_date_global = start_date_raw
 else:
     start_date_global = datetime.strptime(str(start_date_raw), "%Y-%m-%d").date()
-
-start_date_global = datetime.strptime(settings.get('start_date_download_minutes', "2014-01-01"), "%Y-%m-%d").date()
 output_dir = Path(settings.get('output_dir', 'C:/Users/Alkor/gd/data_quote_db')).resolve()
 provider = settings.get('provider', 'moex')
 
