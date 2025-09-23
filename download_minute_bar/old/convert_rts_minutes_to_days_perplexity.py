@@ -1,4 +1,5 @@
 """
+Perplexity
 Конвертирует минутные котировки по файлам баз данных за года в дневные котировки.
 Для минутных данных используется набор файлов SQLite — по одному на год.
 Формируются дневные свечи с 21:00 предыдущей сессии до 20:59:59 текущей.
@@ -23,7 +24,7 @@ provider = settings['provider']
 output_dir = Path(settings['output_dir']).resolve()
 time_start = settings['time_start']  # например "21:00:00"
 time_end = settings['time_end']      # например "20:59:59"
-path_db_day = Path(settings['path_db_day']).resolve()
+path_db_day = Path(settings.get('path_db_day').replace('{ticker}', ticker))
 minutes_db_dir = Path(settings['path_db_minute']).resolve()  # папка с годовыми БД
 
 # --- Логирование ---

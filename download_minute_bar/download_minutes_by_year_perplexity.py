@@ -1,8 +1,9 @@
 """
-Скрипт скачивает минутные данные по фьючерсу RTS с MOEX ISS API и сохраняет их по годам в отдельные базы SQLite.
+Скрипт скачивает минутные данные по фьючерсу с MOEX ISS API и сохраняет их по годам в отдельные базы SQLite.
 Каждый файл содержит данные только за один календарный год.
 Если в БД уже есть данные, докачиваются только недостающие бары.
 Комментарии и структура кода адаптированы для поддержки годовых файлов.
+Выбор фьючерса зависит от параметра ticker в файле settings.yaml.
 """
 
 from pathlib import Path
@@ -14,12 +15,13 @@ import logging
 import yaml
 
 # ==== НАСТРОЙКИ ====
-SETTINGS_FILE = Path(__file__).parent / "settings.yaml"
+# SETTINGS_FILE = Path(__file__).parent / "settings_rts.yaml"
+SETTINGS_FILE = Path(__file__).parent / "settings_mix.yaml"
 with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
     settings = yaml.safe_load(f)
 
 # Основные параметры
-ticker = settings.get('ticker', 'RTS')
+ticker = settings['ticker']
 ticker_lc = ticker.lower()
 start_date_raw = settings.get('start_date_download_minutes', "2014-01-01")
 if isinstance(start_date_raw, date):

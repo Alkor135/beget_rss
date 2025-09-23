@@ -1,5 +1,5 @@
 # Тикер базового актива (например, RTS, если нужен фьючерс на индекс РТС)
-ticker: 'RTS'
+ticker: 'MIX'
 
 # Провайдер или метка (группа папок для хранения данных, настраивайте произвольно)
 provider: 'moex'
@@ -12,5 +12,12 @@ output_dir: 'C:/Users/Alkor/gd/data_quote_db'
 
 time_start: "21:00:00"
 time_end: "20:59:59"
-path_db_day: 'C:/Users/Alkor/gd/data_quote_db'
-path_db_minute: 'C:/Users/Alkor/gd/data_quote_db'  # папка с годовыми БД
+
+# Файл БД с дневными котировками
+path_db_day: 'C:/Users/Alkor/gd/data_quote_db/{ticker}_days.sqlite'
+
+# path_db_minute может быть:
+# - точный путь к файлу,
+# - путь с шаблоном (например "C:/.../minutes_MIX_*.sqlite"),
+# - путь к каталогу, из которого будут взяты файлы minutes_{ticker}_*.sqlite
+path_db_minute: 'C:/Users/Alkor/gd/data_quote_db'  # папка с БД минутных котировок по годам
