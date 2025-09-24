@@ -1,5 +1,8 @@
 """
-RSS Scraper for Investing.com News
+RSS скрапер новостей с сайта Investing.com и записью в БД SQLite 3 по месяцам.
+Время публикации новостей конвертируется в московское время (MSK).
+Скрипт асинхронно парсит RSS-ленты, сохраняет новости в SQLite базу данных,
+удаляет дубликаты и выполняет оптимизацию базы данных
 """
 
 import asyncio
@@ -13,15 +16,36 @@ import sqlite3
 import os
 import logging
 from logging.handlers import TimedRotatingFileHandler
+from pytz import timezone
+from pathlib import Path
+import yaml
+
+# Путь к settings.yaml в той же директории, что и скрипт
+SETTINGS_FILE = Path(__file__).parent / "settings.yaml"
+
+# Чтение настроек
+with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
+    settings = yaml.safe_load(f)
+
+# Параметры
+URL = settings['url_investing']
+BASE_DIR = settings['base_dir']
+LOG_FILE = '/home/ubuntu/rss_scraper/log/rss_scraper_month.log'
 
 # Настройка логирования с ротацией по времени
 log_handler = TimedRotatingFileHandler(
-    '/home/ubuntu/rss_scraper/log/rss_scraper_month.log',
+    LOG_FILE,
     when='midnight',  # Новый файл каждый день в полночь
     interval=1,
     backupCount=3  # Хранить логи за 3 дней
 )
-log_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+# log_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+log_handler.setFormatter(logging.Formatter(
+    fmt='%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+    style='%'
+))
+log_handler.converter = lambda *args: datetime.now(timezone('Europe/Moscow')).timetuple()
 logging.getLogger('').setLevel(logging.INFO)
 logging.getLogger('').addHandler(log_handler)
 
@@ -61,7 +85,8 @@ async def async_parsing_news(rss_links: list[str]) -> pd.DataFrame:
         results = await asyncio.gather(*tasks)
     all_news = [item for sublist in results for item in sublist]
     df = pd.DataFrame(all_news, columns=["date", "section", "title", "link"])
-    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    df["date"] = pd.to_datetime(df["date"], utc=True, errors="coerce")  # Парсим как UTC (GMT)
+    df["date"] = df["date"].dt.tz_convert(timezone('Europe/Moscow'))  # Конвертируем в MSK
     return df
 
 def get_links(url: str) -> list[str]:
@@ -121,6 +146,9 @@ def save_to_sqlite(df: pd.DataFrame, base_dir: str) -> None:
     current_date = datetime.now()
     db_path = get_db_path(base_dir, current_date)
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
+
+    # Преобразуем date в строку формата '%Y-%m-%d %H:%M:%S' без информации о timezone
+    df['date'] = df['date'].dt.strftime('%Y-%m-%d %H:%M:%S')
 
     with sqlite3.connect(db_path) as conn:
         try:
@@ -197,6 +225,4 @@ def main(url: str, base_dir: str) -> None:
 
 
 if __name__ == '__main__':
-    URL = "https://ru.investing.com/webmaster-tools/rss"
-    BASE_DIR = "/home/ubuntu/rss_scraper/db_data"
     main(URL, BASE_DIR)

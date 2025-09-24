@@ -1,0 +1,4 @@
+# settings.yaml
+
+base_dir: "/home/ubuntu/rss_scraper/db_data"
+url_investing: "https://ru.investing.com/webmaster-tools/rss"
