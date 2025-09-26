@@ -184,7 +184,7 @@ def main():
     RSS_LINK = "https://1prime.ru/export/rss2/archive/index.xml"
     BASE_DIR = "/home/user/rss_scraper/db_rss_prime"
 
-    logging.info(f"\nЗапуск сбора данных: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    logging.info(f"Запуск сбора данных: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     df = parsing_news(RSS_LINK)
     df = df.sort_values(by='date')
     save_to_sqlite(df, BASE_DIR)

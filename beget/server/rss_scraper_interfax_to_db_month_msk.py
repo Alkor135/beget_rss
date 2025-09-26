@@ -188,7 +188,7 @@ def main():
     RSS_LINK = "https://www.interfax.ru/rss.asp"
     BASE_DIR = "/home/user/rss_scraper/db_rss_interfax"
 
-    logging.info(f"\nЗапуск сбора данных: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    logging.info(f"Запуск сбора данных: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     df = parsing_news(RSS_LINK)
     df = df.sort_values(by='date')
     save_to_sqlite(df, BASE_DIR)

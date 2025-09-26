@@ -196,7 +196,7 @@ def main(url: str, base_dir: str) -> None:
     Основная функция для парсинга RSS и сохранения в БД текущего месяца.
     """
     try:
-        logging.info(f"\nЗапуск сбора данных: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        logging.info(f"Запуск сбора данных: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         rss_links = get_links(url)
         if not rss_links:
             logging.error("Не удалось получить ссылки на RSS ленты.")
@@ -212,6 +212,5 @@ def main(url: str, base_dir: str) -> None:
 
 if __name__ == '__main__':
     URL = "https://ru.investing.com/webmaster-tools/rss"
-    # BASE_DIR = "/home/user/rss_scraper/db_data_investing"
     BASE_DIR = "/home/user/rss_scraper/db_rss_investing"
     main(URL, BASE_DIR)

@@ -45,11 +45,11 @@ def ensure_dir(directory: Path):
     directory.mkdir(parents=True, exist_ok=True)
 
 # Выполнение команды rsync с логированием
-def run_rsync(command, log_file, section_name, timestamp):
+def run_rsync(command, log_file, section_name):
     try:
-        timestamp = get_timestamp()
-        print(f"[{timestamp}] Начало выполнения: {section_name}")
-        print(f"[{timestamp}] Команда: {' '.join(command)}")  # Выводим полную команду
+        # timestamp = get_timestamp()
+        print(f"[{get_timestamp()}] Начало выполнения: {section_name}")
+        print(f"[{get_timestamp()}] Команда: {' '.join(command)}")  # Выводим полную команду
 
         result = subprocess.run(
             command,
@@ -61,25 +61,25 @@ def run_rsync(command, log_file, section_name, timestamp):
             timeout=30    # Добавлен таймаут 30 секунд
         )
         with open(log_file, 'a', encoding='utf-8') as f:
-            f.write(f"[{timestamp}] {section_name}\n")
+            f.write(f"[{get_timestamp()}] {section_name}\n")
             for line in result.stdout.splitlines():
-                f.write(f"[{timestamp}] {line}\n")
+                f.write(f"[{get_timestamp()}] {line}\n")
             if result.stderr:
-                f.write(f"[{timestamp}] Ошибка:\n{result.stderr}\n")
+                f.write(f"[{get_timestamp()}] Ошибка:\n{result.stderr}\n")
 
         if result.returncode == 0:
-            print(f"[{timestamp}] {section_name} успешно выполнен")
+            print(f"[{get_timestamp()}] {section_name} успешно выполнен")
         else:
-            print(f"[{timestamp}] {section_name} завершён с кодом {result.returncode}")
+            print(f"[{get_timestamp()}] {section_name} завершён с кодом {result.returncode}")
 
     except subprocess.CalledProcessError as e:
-        error_msg = f"[{timestamp}] Ошибка при выполнении {section_name}: {e.stderr}"
+        error_msg = f"[{get_timestamp()}] Ошибка при выполнении {section_name}: {e.stderr}"
         print(error_msg)
         with open(log_file, 'a', encoding='utf-8') as f:
             f.write(error_msg + "\n")
 
     except subprocess.TimeoutExpired:
-        error_msg = f"[{timestamp}] Таймаут команды {section_name}"
+        error_msg = f"[{get_timestamp()}] Таймаут команды {section_name}"
         print(error_msg)
         with open(log_file, 'a', encoding='utf-8') as f:
             f.write(error_msg + "\n")
@@ -95,31 +95,31 @@ def sync_files():
         ensure_dir(log_dir)
 
         # Синхронизация .db файлов
-        timestamp = get_timestamp()
+        # timestamp = get_timestamp()
         print(f"[{get_timestamp()}] Запуск синхронизации .db файлов")
         with open(log_file, 'w', encoding='utf-8') as f:
             # f.write(f"[{timestamp}] Sync .db files\n")
-            f.write(f"[{timestamp}] Синхронизация .db файлов\n")
+            f.write(f"[{get_timestamp()}] Синхронизация .db файлов\n")
         rsync_db_cmd = [
             "wsl", "rsync", "-avz",
             "--include=*/", "--include=**/*.db", "--exclude=*",
             f"root@109.172.46.10:{config['db_remote']}",
             f"/mnt/c{str(db_dir)[2:].replace('\\', '/')}/"
         ]
-        run_rsync(rsync_db_cmd, log_file, "Sync .db files", timestamp)
+        run_rsync(rsync_db_cmd, log_file, f"Sync .db files: {config['db_remote']}")
 
         # Синхронизация .log файлов
-        timestamp = get_timestamp()
-        print(f"[{timestamp}] Запуск синхронизации .log файлов")
+        # timestamp = get_timestamp()
+        print(f"[{get_timestamp()}] Запуск синхронизации .log файлов")
         with open(log_file, 'a', encoding='utf-8') as f:
-            f.write(f"\n[{timestamp}] Синхронизация .log файлов\n")
+            f.write(f"\n[{get_timestamp()}] Синхронизация .log файлов\n")
         rsync_log_cmd = [
             "wsl", "rsync", "-avz",
             f"--include={config['log_pattern']}", "--exclude=*",
             f"root@109.172.46.10:{config['log_remote']}",
             f"/mnt/c{str(log_dir)[2:].replace('\\', '/')}/"
         ]
-        run_rsync(rsync_log_cmd, log_file, "Sync .log files", timestamp)
+        run_rsync(rsync_log_cmd, log_file, f"Sync .log files: {config['log_remote']}")
 
 if __name__ == "__main__":
     sync_files()
