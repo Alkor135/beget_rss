@@ -85,7 +85,7 @@ def sync_files():
         with open(log_file, 'w', encoding='utf-8') as f:
             f.write(f"[{timestamp}] Синхронизация .db файлов\n")
         rsync_db_cmd = [
-            "wsl", "rsync", "-avz",
+            "wsl", "rsync", "-avz", "--progress",
             "--include=*/", "--include=**/*.db", "--exclude=*",
             f"ubuntu@212.22.94.68:{config['db_remote']}",
             f"/mnt/c{str(db_dir)[2:].replace('\\', '/')}/"
@@ -98,7 +98,7 @@ def sync_files():
         with open(log_file, 'a', encoding='utf-8') as f:
             f.write(f"\n[{timestamp}] Синхронизация .log файлов\n")
         rsync_log_cmd = [
-            "wsl", "rsync", "-avz",
+            "wsl", "rsync", "-avz", "--progress",
             "--include=*/",  # Включаем все подпапки
             f"--include={config['log_pattern']}",  # Включаем нужные .txt файлы
             "--exclude=*",  # Исключаем всё остальное

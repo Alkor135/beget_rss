@@ -101,7 +101,7 @@ def sync_files():
             # f.write(f"[{timestamp}] Sync .db files\n")
             f.write(f"[{get_timestamp()}] Синхронизация .db файлов\n")
         rsync_db_cmd = [
-            "wsl", "rsync", "-avz",
+            "wsl", "rsync", "-avz", "--progress",
             "--include=*/", "--include=**/*.db", "--exclude=*",
             f"root@109.172.46.10:{config['db_remote']}",
             f"/mnt/c{str(db_dir)[2:].replace('\\', '/')}/"
@@ -114,7 +114,7 @@ def sync_files():
         with open(log_file, 'a', encoding='utf-8') as f:
             f.write(f"\n[{get_timestamp()}] Синхронизация .log файлов\n")
         rsync_log_cmd = [
-            "wsl", "rsync", "-avz",
+            "wsl", "rsync", "-avz", "--progress",
             f"--include={config['log_pattern']}", "--exclude=*",
             f"root@109.172.46.10:{config['log_remote']}",
             f"/mnt/c{str(log_dir)[2:].replace('\\', '/')}/"
