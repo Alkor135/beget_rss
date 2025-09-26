@@ -179,7 +179,7 @@ def remove_duplicates_from_db(base_dir: str) -> None:
 
             conn.isolation_level = None
             conn.execute("VACUUM")
-            logging.info(f"VACUUM выполнен для {db_path}")
+            logging.info(f"VACUUM выполнен для {db_path}\n")
     except Exception as e:
         logging.error(f"Ошибка при удалении дубликатов из {db_path}: {e}")
 

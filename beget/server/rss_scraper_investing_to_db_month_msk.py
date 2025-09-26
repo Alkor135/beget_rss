@@ -186,7 +186,7 @@ def remove_duplicates_from_db(base_dir: str) -> None:
             # Выполняем VACUUM для текущей базы
             conn.isolation_level = None
             conn.execute("VACUUM")
-            logging.info(f"VACUUM выполнен для {db_path}: база данных оптимизирована.")
+            logging.info(f"VACUUM выполнен для {db_path}: база данных оптимизирована.\n")
     except Exception as e:
         logging.error(f"Ошибка при обработке базы данных {db_path}: {e}")
 
