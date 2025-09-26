@@ -22,7 +22,7 @@ log_handler = TimedRotatingFileHandler(
     log_file,
     when='midnight',  # Новый файл каждый день в полночь
     interval=1,
-    backupCount=3,    # Хранить логи за 3 дней
+    backupCount=1,    # Хранить логи за 3 дней
     encoding='utf-8'  # Указываем кодировку UTF-8
 )
 log_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
@@ -35,7 +35,7 @@ def download_files():
         # Параметры подключения к серверу
         hostname = '212.22.94.68'  # IP-адрес вашего сервера
         username = 'ubuntu'        # Имя пользователя
-        key_path = 'C:\\Users\\Alkor\\.ssh\\id_rsa'  # Путь к приватному SSH-ключу
+        key_path = 'C:/Users/Alkor/.ssh/id_rsa'  # Путь к приватному SSH-ключу
 
         # Локальные папки для сохранения
         local_db_dir = Path('C:\\Users\\Alkor\\gd\\data_makecloud_rss')  # Для баз данных
