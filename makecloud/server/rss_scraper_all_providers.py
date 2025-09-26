@@ -308,7 +308,7 @@ def remove_duplicates_from_db(db_path: str):
             logging.info(f"Дубликаты удалены. Удалено: {deleted_count}")
             conn.isolation_level = None
             conn.execute("VACUUM")
-            logging.info("VACUUM выполнен для базы данных.")
+            logging.info("VACUUM выполнен для базы данных.\n")
     except Exception as e:
         logging.error(f"Ошибка при удалении дубликатов: {e}")
 
