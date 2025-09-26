@@ -19,9 +19,9 @@ sync_configs = [
         "name": "rss_news",
         "db_dir": r"C:\Users\Alkor\gd\db_rss",
         "log_dir": r"C:\Users\Alkor\gd\db_rss\log",
-        "db_remote": "/home/ubuntu/rss_scraper/db_data",
-        "log_remote": "/home/ubuntu/rss_scraper/log",
-        "log_pattern": "rss_scraper_all_providers.txt"
+        "db_remote": "/home/ubuntu/rss_scraper/db_data/",
+        "log_remote": "/home/ubuntu/rss_scraper/log/",
+        "log_pattern": "*.txt"
     }
 ]
 
@@ -98,7 +98,9 @@ def sync_files():
             f.write(f"\n[{timestamp}] Синхронизация .log файлов\n")
         rsync_log_cmd = [
             "wsl", "rsync", "-avz",
-            f"--include={config['log_pattern']}", "--exclude=*",
+            "--include=*/",  # Включаем все подпапки
+            f"--include={config['log_pattern']}",  # Включаем нужные .txt файлы
+            "--exclude=*",  # Исключаем всё остальное
             f"ubuntu@212.22.94.68:{config['log_remote']}",
             f"/mnt/c{str(log_dir)[2:].replace('\\', '/')}/"
         ]
