@@ -72,7 +72,6 @@ def run_rsync(command, log_file, section_name, timestamp):
 # Синхронизация файлов
 def sync_files():
     for config in sync_configs:
-        timestamp = get_timestamp()
         log_dir = Path(config["log_dir"])
         log_file = log_dir / "sync.log"
         db_dir = Path(config["db_dir"])
@@ -81,6 +80,7 @@ def sync_files():
         ensure_dir(log_dir)
 
         # Синхронизация .db файлов
+        timestamp = get_timestamp()
         print(f"[{timestamp}] Запуск синхронизации .db файлов")
         with open(log_file, 'w', encoding='utf-8') as f:
             f.write(f"[{timestamp}] Синхронизация .db файлов\n")
@@ -93,6 +93,7 @@ def sync_files():
         run_rsync(rsync_db_cmd, log_file, "Sync .db files", timestamp)
 
         # Синхронизация .log файлов
+        timestamp = get_timestamp()
         print(f"[{timestamp}] Запуск синхронизации .log файлов")
         with open(log_file, 'a', encoding='utf-8') as f:
             f.write(f"\n[{timestamp}] Синхронизация .log файлов\n")

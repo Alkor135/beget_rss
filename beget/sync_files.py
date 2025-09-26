@@ -47,16 +47,39 @@ def ensure_dir(directory: Path):
 # Выполнение команды rsync с логированием
 def run_rsync(command, log_file, section_name, timestamp):
     try:
+        timestamp = get_timestamp()
+        print(f"[{timestamp}] Начало выполнения: {section_name}")
+        print(f"[{timestamp}] Команда: {' '.join(command)}")  # Выводим полную команду
+
         result = subprocess.run(
-            command, capture_output=True, text=True, encoding='utf-8', errors='replace', check=True
+            command,
+            capture_output=True,
+            text=True,
+            encoding='utf-8',
+            errors='replace',
+            check=False,  # Не прерываем на ошибке для получения вывода
+            timeout=30    # Добавлен таймаут 30 секунд
         )
         with open(log_file, 'a', encoding='utf-8') as f:
             f.write(f"[{timestamp}] {section_name}\n")
             for line in result.stdout.splitlines():
                 f.write(f"[{timestamp}] {line}\n")
-        print(f"[{timestamp}] {section_name} успешно выполнен")
+            if result.stderr:
+                f.write(f"[{timestamp}] Ошибка:\n{result.stderr}\n")
+
+        if result.returncode == 0:
+            print(f"[{timestamp}] {section_name} успешно выполнен")
+        else:
+            print(f"[{timestamp}] {section_name} завершён с кодом {result.returncode}")
+
     except subprocess.CalledProcessError as e:
         error_msg = f"[{timestamp}] Ошибка при выполнении {section_name}: {e.stderr}"
+        print(error_msg)
+        with open(log_file, 'a', encoding='utf-8') as f:
+            f.write(error_msg + "\n")
+
+    except subprocess.TimeoutExpired:
+        error_msg = f"[{timestamp}] Таймаут команды {section_name}"
         print(error_msg)
         with open(log_file, 'a', encoding='utf-8') as f:
             f.write(error_msg + "\n")
@@ -64,7 +87,6 @@ def run_rsync(command, log_file, section_name, timestamp):
 # Синхронизация файлов
 def sync_files():
     for config in sync_configs:
-        timestamp = get_timestamp()
         log_dir = Path(config["log_dir"])
         log_file = log_dir / "sync.log"
         db_dir = Path(config["db_dir"])
@@ -73,6 +95,8 @@ def sync_files():
         ensure_dir(log_dir)
 
         # Синхронизация .db файлов
+        timestamp = get_timestamp()
+        print(f"[{get_timestamp()}] Запуск синхронизации .db файлов")
         with open(log_file, 'w', encoding='utf-8') as f:
             # f.write(f"[{timestamp}] Sync .db files\n")
             f.write(f"[{timestamp}] Синхронизация .db файлов\n")
@@ -85,6 +109,8 @@ def sync_files():
         run_rsync(rsync_db_cmd, log_file, "Sync .db files", timestamp)
 
         # Синхронизация .log файлов
+        timestamp = get_timestamp()
+        print(f"[{timestamp}] Запуск синхронизации .log файлов")
         with open(log_file, 'a', encoding='utf-8') as f:
             f.write(f"\n[{timestamp}] Синхронизация .log файлов\n")
         rsync_log_cmd = [
