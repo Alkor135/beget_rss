@@ -280,12 +280,17 @@ def save_to_sqlite(news_list: list[dict], base_dir: str):
 
 def remove_duplicates_from_db(db_path: str):
     """
-    Удаляет дубликаты по дате (без времени), title и provider.
+    Удаляет дубликаты по DATE(date), title, provider,
+    оставляя запись с самой ранней `loaded_at`.
     """
     try:
         with sqlite3.connect(db_path) as conn:
             cursor = conn.execute("SELECT COUNT(*) FROM news")
             before_count = cursor.fetchone()[0]
+            if before_count == 0:
+                logging.info(f"В базе {Path(db_path).name} нет записей для удаления дубликатов.")
+                return
+
             conn.execute("""
                 DELETE FROM news
                 WHERE rowid NOT IN (
@@ -293,10 +298,7 @@ def remove_duplicates_from_db(db_path: str):
                     FROM (
                         SELECT
                             rowid,
-                            DATE(date) AS news_date,
-                            title,
-                            provider,
-                            ROW_NUMBER() OVER (PARTITION BY DATE(date), title, provider ORDER BY date ASC) AS rn
+                            ROW_NUMBER() OVER (PARTITION BY DATE(date), title, provider ORDER BY loaded_at ASC) AS rn
                         FROM news
                     ) AS subquery
                     WHERE rn = 1
@@ -305,12 +307,16 @@ def remove_duplicates_from_db(db_path: str):
             cursor = conn.execute("SELECT COUNT(*) FROM news")
             after_count = cursor.fetchone()[0]
             deleted_count = before_count - after_count
-            logging.info(f"Дубликаты удалены. Удалено: {deleted_count}")
-            conn.isolation_level = None
-            conn.execute("VACUUM")
-            logging.info("VACUUM выполнен для базы данных.\n")
+            if deleted_count > 0:
+                logging.info(f"В {Path(db_path).name} удалено дубликатов: {deleted_count}")
+                conn.isolation_level = None
+                conn.execute("VACUUM")
+                logging.info(f"VACUUM выполнен для {Path(db_path).name}.\n")
+            else:
+                logging.info(f"В {Path(db_path).name} дубликаты не найдены.\n")
     except Exception as e:
-        logging.error(f"Ошибка при удалении дубликатов: {e}")
+        logging.error(f"Ошибка при удалении дубликатов в {Path(db_path).name}: {e}")
+
 
 # --- Основная функция ---
 def main():
