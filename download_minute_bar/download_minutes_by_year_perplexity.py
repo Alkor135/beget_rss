@@ -4,6 +4,8 @@
 Если в БД уже есть данные, докачиваются только недостающие бары.
 Комментарии и структура кода адаптированы для поддержки годовых файлов.
 Выбор фьючерса зависит от параметра ticker в файле settings.yaml.
+Выбор даты начала загрузки зависит от параметра start_date_download_minutes в файле settings.yaml
+или от последней даты в существующих файлах БД (выбор режима через параметр download_mode).
 """
 
 from pathlib import Path
@@ -15,8 +17,8 @@ import logging
 import yaml
 
 # ==== НАСТРОЙКИ ====
-# SETTINGS_FILE = Path(__file__).parent / "settings_rts.yaml"
-SETTINGS_FILE = Path(__file__).parent / "settings_mix.yaml"
+SETTINGS_FILE = Path(__file__).parent / "settings_rts.yaml"
+# SETTINGS_FILE = Path(__file__).parent / "settings_mix.yaml"
 with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
     settings = yaml.safe_load(f)
 
@@ -59,6 +61,28 @@ def request_moex(session, url, logger, retries=5, timeout=10):
         except requests.RequestException as e:
             logger.error(f"Ошибка запроса {url} (попытка {attempt + 1}): {e}")
     return None
+
+def get_last_date_in_db(ticker: str, output_dir: Path, logger: logging.Logger) -> date | None:
+    """
+    Проверяет все годовые файлы БД и находит последнюю дату минутных данных.
+    """
+    last_date = None
+    for db_file in sorted(output_dir.glob(f"minutes_{ticker}_*.sqlite")):
+        try:
+            conn = sqlite3.connect(str(db_file))
+            cursor = conn.cursor()
+            cursor.execute("SELECT MAX(DATE(TRADEDATE)) FROM Futures")
+            row = cursor.fetchone()
+            if row and row[0]:
+                db_date = datetime.strptime(row[0], "%Y-%m-%d").date()
+                if not last_date or db_date > last_date:
+                    last_date = db_date
+            cursor.close()
+            conn.close()
+        except Exception as e:
+            logger.error(f"Ошибка чтения {db_file}: {e}")
+    return last_date
+
 
 def get_info_future(session, security, logger):
     """
@@ -266,9 +290,35 @@ def main_for_year(ticker: str, year: int, output_dir: Path, provider: str, start
 
 # ==== ЗАПУСК ПО ВСЕМ ГОДАМ ====
 if __name__ == "__main__":
+    # first_year = start_date_global.year
+    # last_year = datetime.now().year
+    # for year in range(first_year, last_year + 1):
+    #     start_of_year = date(year, 1, 1)
+    #     end_of_year = date(year, 12, 31) if year != last_year else datetime.now().date()
+    #     main_for_year(ticker, year, output_dir, provider, start_of_year, end_of_year)
+
+    log_file = output_dir / 'log' / f'{ticker.lower()}_{provider}_main.txt'
+    main_logger = init_logger(log_file)
+
+    mode = settings.get("download_mode", "from_settings")
+    if mode == "from_db":
+        last_date = get_last_date_in_db(ticker, output_dir, main_logger)
+        if last_date:
+            start_date_global = last_date
+            main_logger.info(f"Режим from_db: старт с {start_date_global}")
+        else:
+            main_logger.info("Режим from_db: данных нет, старт с даты из настроек")
+    else:
+        main_logger.info(f"Режим from_settings: старт с {start_date_global}")
+
     first_year = start_date_global.year
     last_year = datetime.now().year
+
     for year in range(first_year, last_year + 1):
-        start_of_year = date(year, 1, 1)
-        end_of_year = date(year, 12, 31) if year != last_year else datetime.now().date()
+        start_of_year = (
+            start_date_global if year == first_year else date(year, 1, 1)
+        )
+        end_of_year = (
+            date(year, 12, 31) if year != last_year else datetime.now().date()
+        )
         main_for_year(ticker, year, output_dir, provider, start_of_year, end_of_year)

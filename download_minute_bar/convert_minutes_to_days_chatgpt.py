@@ -26,8 +26,8 @@ except Exception:
     tqdm = None  # безопасно работать без tqdm
 
 # Путь к settings.yaml (в той же папке, что и скрипт)
-# SETTINGS_FILE = Path(__file__).parent / "settings_rts.yaml"
-SETTINGS_FILE = Path(__file__).parent / "settings_mix.yaml"
+SETTINGS_FILE = Path(__file__).parent / "settings_rts.yaml"
+# SETTINGS_FILE = Path(__file__).parent / "settings_mix.yaml"
 
 # --- Чтение настроек ---
 with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:

@@ -10,6 +10,7 @@ start_date_download_minutes: '2014-01-01'
 # Директория для итоговых файлов (относительно этого скрипта или полный путь)
 output_dir: 'C:/Users/Alkor/gd/data_quote_db'
 
+# Время для формирования дневной свечи (формат ЧЧ:ММ:СС)
 time_start: "21:00:00"
 time_end: "20:59:59"
 
@@ -21,3 +22,7 @@ path_db_day: 'C:/Users/Alkor/gd/data_quote_db/{ticker}_days.sqlite'
 # - путь с шаблоном (например "C:/.../minutes_MIX_*.sqlite"),
 # - путь к каталогу, из которого будут взяты файлы minutes_{ticker}_*.sqlite
 path_db_minute: 'C:/Users/Alkor/gd/data_quote_db'  # папка с БД минутных котировок по годам
+
+# "from_settings" или "from_db"
+#download_mode: "from_settings"
+download_mode: "from_db"
