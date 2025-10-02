@@ -105,7 +105,7 @@ def main():
     # Проверка соответствия дат
     missing_in_db = sorted(cache_dates - db_dates)
     missing_in_cache = sorted(db_dates - cache_dates)
-    print("\n=== Проверка дат ===")
+    print("\n=== Проверка дат дневных баров ===")
     if missing_in_db:
         print(f"{YELLOW}⚠️ Даты есть в кэше, но отсутствуют в БД:{RESET}")
         for d in missing_in_db:
