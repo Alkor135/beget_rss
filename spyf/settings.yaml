@@ -5,7 +5,7 @@ ticker_lc: 'spyf'
 provider: 'investing'
 model_name: 'bge-m3'
 url_ai: 'http://localhost:11434/api/embeddings'
-min_prev_files: 4
+min_prev_files: 2
 max_prev_files: 4
 time_start: '21:00:00'
 time_end: '20:59:59'

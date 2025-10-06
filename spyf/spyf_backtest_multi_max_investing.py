@@ -203,7 +203,7 @@ def main():
     # Создание итогового DataFrame
     all_results = pd.DataFrame()
 
-    for max_prev in range(4, 31):  # от 4 до 30
+    for max_prev in range(3, 31):  # от 3 до 30
         logger.info(f"Проводим backtest для max_prev_files = {max_prev}")
         results_df = backtest_predictions(documents, cache, quotes_df, max_prev)
         if not results_df.empty:
