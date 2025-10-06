@@ -13,22 +13,22 @@ PYTHON = os.path.join(BASE, ".venv", "Scripts", "python.exe")
 # список скриптов по порядку
 SCRIPTS = [
     r"beget\sync_files.py",
-
-    r"rts\rts_download_minutes_to_db.py",
-    r"rts\rts_21_00_convert_minutes_to_days.py",
-    r"rts\rts_21_00_db_investing_month_to_md.py",
-    r"rts\rts_predict_next_session_investing_ollama.py",
-    r"trade\trade_rts_tri.py",
-    r"rts\rts_backtesting_investing_ollama.py",
-    r"rts\rts_backtest_multi_max_investing.py",
-
-    r"mix\mix_download_minutes_to_db.py",
-    r"mix\mix_21_00_convert_minutes_to_days.py",
-    r"mix\mix_21_00_db_investing_month_to_md.py",
-    r"mix\mix_predict_next_session_investing_ollama.py",
-    r"trade\trade_mix_tri.py",
-    r"mix\mix_backtesting_investing_ollama.py",
-    r"mix\mix_backtest_multi_max_investing.py",
+    #
+    # r"rts\rts_download_minutes_to_db.py",
+    # r"rts\rts_21_00_convert_minutes_to_days.py",
+    # r"rts\rts_21_00_db_investing_month_to_md.py",
+    # r"rts\rts_predict_next_session_investing_ollama.py",
+    # r"trade\trade_rts_tri.py",
+    # r"rts\rts_backtesting_investing_ollama.py",
+    # r"rts\rts_backtest_multi_max_investing.py",
+    #
+    # r"mix\mix_download_minutes_to_db.py",
+    # r"mix\mix_21_00_convert_minutes_to_days.py",
+    # r"mix\mix_21_00_db_investing_month_to_md.py",
+    # r"mix\mix_predict_next_session_investing_ollama.py",
+    # r"trade\trade_mix_tri.py",
+    # r"mix\mix_backtesting_investing_ollama.py",
+    # r"mix\mix_backtest_multi_max_investing.py",
 
     r"br\br_download_minutes_to_db.py",
     r"br\br_21_00_convert_minutes_to_days.py",
