@@ -12,7 +12,7 @@ PYTHON = os.path.join(BASE, ".venv", "Scripts", "python.exe")
 
 # список скриптов по порядку
 SCRIPTS = [
-    r"beget\sync_files.py",
+    # r"beget\sync_files.py",
     #
     # r"rts\rts_download_minutes_to_db.py",
     # r"rts\rts_21_00_convert_minutes_to_days.py",
