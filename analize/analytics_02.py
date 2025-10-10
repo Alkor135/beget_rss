@@ -3,7 +3,8 @@ import pandas as pd, numpy as np
 from pathlib import Path
 import matplotlib.pyplot as plt
 
-input_path = Path(r"C:\Users\Alkor\gd\buhinvest_futures_RTS_MIX_без_пароля.xlsx")
+# input_path = Path(r"C:\Users\Alkor\gd\buhinvest_futures_RTS_MIX_без_пароля.xlsx")
+input_path = Path(r"C:\Users\Alkor\gd\buhinvest_futures_RTS_MIX_full.xlsx")
 xls = pd.read_excel(input_path, sheet_name=None)
 df_raw = xls['Data'].copy()
 
