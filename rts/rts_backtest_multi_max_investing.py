@@ -31,6 +31,7 @@ ticker = settings['ticker']
 ticker_lc = ticker.lower()
 provider = settings['provider']  # Провайдер RSS новостей
 min_prev_files = settings['min_prev_files']  # Минимальное количество предыдущих файлов
+test_days = settings.get('test_days', None)  #
 
 md_path = Path(  # Путь к markdown-файлам
     settings['md_path'].replace('{ticker_lc}', ticker_lc).replace('{provider}', provider))
@@ -86,7 +87,6 @@ def load_markdown_files(directory):
             if len(parts) >= 3:
                 metadata_yaml = parts[1].strip()
                 text_content = parts[2].strip()
-                # md5_hash = hashlib.md5(text_content.encode('utf-8')).hexdigest()  # нового md5 закомментить
                 metadata = yaml.safe_load(metadata_yaml) or {}
                 metadata_str = {
                     "next_bar": str(metadata.get("next_bar", "unknown")),
@@ -130,7 +130,13 @@ def backtest_predictions(documents, cache, quotes_df, max_prev_files):
     """Проводит backtesting для заданного max_prev_files и возвращает DataFrame с test_date и cumulative_next_bar_pips."""
     results = []
 
-    for test_idx in range(min_prev_files, len(documents)):
+    # ➕ Ограничение по количеству тестовых дней
+    if test_days:
+        start_idx = max(min_prev_files, len(documents) - test_days)
+    else:
+        start_idx = min_prev_files
+
+    for test_idx in range(start_idx, len(documents)):  # for test_idx in range(min_prev_files, len(documents)):
         test_doc = documents[test_idx]
         real_next_bar = test_doc.metadata['next_bar']
         test_date = test_doc.metadata['date']
@@ -205,7 +211,7 @@ def main():
     all_results = pd.DataFrame()
 
     for max_prev in range(3, 31):  # от 3 до 30
-        logger.info(f"Проводим backtest для max_prev_files = {max_prev}")
+        logger.info(f"Проводим backtest для max_prev_files md файлов = {max_prev}")
         results_df = backtest_predictions(documents, cache, quotes_df, max_prev)
         if not results_df.empty:
             results_df = results_df.rename(columns={'cumulative_next_bar_pips': f'max_{max_prev}'})
