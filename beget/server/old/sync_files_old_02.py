@@ -1,5 +1,6 @@
 """
-Скрипт для синхронизации файлов .db и log(txt с удалённого сервера на локальную машину.
+Скрипт для синхронизации файлов .db и .log с удалённого сервера на локальную машину.
+Эквивалент PowerShell-скрипта sync_files.ps1.
 Использует WSL и rsync для синхронизации данных.
 """
 
@@ -20,15 +21,23 @@ sync_configs = [
         "log_dir": r"C:\Users\Alkor\gd\db_rss_investing\log",
         "db_remote": "/home/user/rss_scraper/db_rss_investing/",
         "log_remote": "/home/user/rss_scraper/log/",
-        "log_pattern": "rss_scraper_investing_to_db_month_msk*.log"
+        "log_pattern": "rss_scraper_investing_to_db_month_msk.txt"
     },
     {
-        "name": "all_providers",
-        "db_dir": r"C:\Users\Alkor\gd\db_rss",
-        "log_dir": r"C:\Users\Alkor\gd\db_rss\log",
-        "db_remote": "/home/user/rss_scraper/db_data/",
+        "name": "interfax",
+        "db_dir": r"C:\Users\Alkor\gd\db_rss_interfax",
+        "log_dir": r"C:\Users\Alkor\gd\db_rss_interfax\log",
+        "db_remote": "/home/user/rss_scraper/db_rss_interfax/",
         "log_remote": "/home/user/rss_scraper/log/",
-        "log_pattern": "rss_scraper_all_providers_to_db_month_msk*.log"
+        "log_pattern": "rss_scraper_interfax_to_db_month_msk.txt"
+    },
+    {
+        "name": "prime",
+        "db_dir": r"C:\Users\Alkor\gd\db_rss_prime",
+        "log_dir": r"C:\Users\Alkor\gd\db_rss_prime\log",
+        "db_remote": "/home/user/rss_scraper/db_rss_prime/",
+        "log_remote": "/home/user/rss_scraper/log/",
+        "log_pattern": "rss_scraper_prime_to_db_month_msk.txt"
     }
 ]
 

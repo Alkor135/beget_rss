@@ -20,7 +20,7 @@ from pytz import timezone
 
 # Настройка логирования с ротацией по времени
 log_handler = TimedRotatingFileHandler(
-    '/home/user/rss_scraper/log/rss_scraper_investing_month.log',
+    '/home/user/rss_scraper/log/rss_scraper_investing_to_db_month_msk.log',
     when='midnight',  # Новый файл каждый день в полночь
     interval=1,
     backupCount=3  # Хранить логи за 3 дней
@@ -32,6 +32,17 @@ log_handler.setFormatter(logging.Formatter(
     style='%'
 ))
 log_handler.converter = lambda *args: datetime.now(timezone('Europe/Moscow')).timetuple()
+# logging.getLogger('').setLevel(logging.INFO)
+# logging.getLogger('').addHandler(log_handler)
+
+# 1. Сбрасываем все старые обработчики
+for handler in logging.root.handlers[:]:
+    logging.root.removeHandler(handler)
+
+# 2. Принудительно задаём Moscow для всех форматтеров
+logging.Formatter.converter = lambda *args: datetime.now(timezone('Europe/Moscow')).timetuple()
+
+# 3. Устанавливаем наш handler
 logging.getLogger('').setLevel(logging.INFO)
 logging.getLogger('').addHandler(log_handler)
 

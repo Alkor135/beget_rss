@@ -1,8 +1,7 @@
 """
-RSS скрапер новостей с сайта 1prime.ru
+RSS скрапер новостей с сайта Интерфакс (только категория 'Экономика')
 и записью в БД SQLite 3 по месяцам.
 Дата/время берутся из pubDate и сохраняются в формате '%Y-%m-%d %H:%M:%S' (MSK).
-Берутся все категории.
 """
 
 import asyncio
@@ -17,7 +16,7 @@ from logging.handlers import TimedRotatingFileHandler
 
 # Настройка логирования
 log_handler = TimedRotatingFileHandler(
-    '/home/user/rss_scraper/log/rss_scraper_prime_month.log',
+    '/home/user/rss_scraper/log/rss_scraper_interfax_to_db_month_msk.txt',
     when='midnight',
     interval=1,
     backupCount=3
@@ -33,7 +32,7 @@ logging.getLogger('').addHandler(log_handler)
 
 async def fetch_rss(session: aiohttp.ClientSession, rss_link: str) -> list[dict]:
     """
-    Получает и парсит RSS-ленту 1prime.ru, берёт все категории.
+    Получает и парсит RSS-ленту Интерфакс, фильтруя по категории 'Экономика'.
     """
     news_items = []
     try:
@@ -42,9 +41,14 @@ async def fetch_rss(session: aiohttp.ClientSession, rss_link: str) -> list[dict]
             root = ET.fromstring(xml_content)
 
             for item in root.findall('.//item'):
+                category = item.find('category').text if item.find('category') is not None else ""
+                if category.strip() != "Экономика":
+                    continue
+
                 title = item.find('title').text if item.find('title') is not None else "Нет заголовка"
                 pub_date_raw = item.find('pubDate').text if item.find('pubDate') is not None else None
 
+                # Преобразуем дату в формат '%Y-%m-%d %H:%M:%S'
                 pub_date = None
                 if pub_date_raw:
                     try:
@@ -86,7 +90,7 @@ def get_db_path(base_dir: str, date: datetime) -> str:
     Путь к базе данных по текущему месяцу.
     """
     year_month = date.strftime("%Y_%m")
-    return os.path.join(base_dir, f"rss_news_prime_{year_month}.db")
+    return os.path.join(base_dir, f"rss_news_interfax_{year_month}.db")
 
 
 def load_existing_news(base_dir: str) -> set:
@@ -114,7 +118,7 @@ def save_to_sqlite(df: pd.DataFrame, base_dir: str) -> None:
         logging.error("DataFrame пустой, нечего сохранять в БД.")
         return
 
-    # Предварительная проверка дублей
+    # Загружаем уже существующие записи
     existing_news = load_existing_news(base_dir)
     before_filter = len(df)
     df = df[~df.apply(lambda row: (row['date'], row['title']) in existing_news, axis=1)]
@@ -181,8 +185,8 @@ def remove_duplicates_from_db(base_dir: str) -> None:
 
 
 def main():
-    RSS_LINK = "https://1prime.ru/export/rss2/archive/index.xml"
-    BASE_DIR = "/home/user/rss_scraper/db_rss_prime"
+    RSS_LINK = "https://www.interfax.ru/rss.asp"
+    BASE_DIR = "/home/user/rss_scraper/db_rss_interfax"
 
     logging.info(f"Запуск сбора данных: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     df = parsing_news(RSS_LINK)

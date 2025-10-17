@@ -1,0 +1,7 @@
+# settings.yaml
+
+base_dir: "/home/user/rss_scraper/db_data"
+
+url_investing: "https://ru.investing.com/webmaster-tools/rss"
+url_interfax: "https://www.interfax.ru/rss.asp"
+url_prime: "https://1prime.ru/export/rss2/archive/index.xml"
