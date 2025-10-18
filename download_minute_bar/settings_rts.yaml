@@ -24,5 +24,5 @@ path_db_day: 'C:/Users/Alkor/gd/data_quote_db/{ticker}_days.sqlite'
 path_db_minute: 'C:/Users/Alkor/gd/data_quote_db'  # папка с БД минутных котировок по годам
 
 # "from_settings" или "from_db"
-#download_mode: "from_settings"
-download_mode: "from_db"
+#download_mode: "from_settings"  # загрузка с даты указанной в settings
+download_mode: "from_db"  # загрузка в БД, если файлы уже есть там с последней даты в БД
