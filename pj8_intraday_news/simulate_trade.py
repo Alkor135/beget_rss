@@ -158,6 +158,18 @@ def main():
     results_df = simulate(df, START_DATE)
     print(f"Количество сделок после фильтров: {len(results_df)}")
 
+    #  === Очистка результатов 2 часа ===
+    results_df['loaded_at'] = pd.to_datetime(results_df['loaded_at'])
+    # Сортировка по возрастанию (от ранних к поздним)
+    results_df = results_df.sort_values(by='loaded_at', ascending=True)
+    # Расчёт разницы между соседними строками
+    results_df['time_diff'] = results_df['loaded_at'].diff()
+    # Фильтрация строк: оставляем первую и те, где разница ≥ 2 часа
+    results_df = results_df[
+        (results_df['time_diff'].isna()) | (results_df['time_diff'] >= pd.Timedelta(hours=2))]
+    # Удаляем временный столбец, если больше не нужен
+    results_df = results_df.drop(columns=['time_diff'])
+
     results_df.to_excel(OUTPUT_FILE, index=False)
     print(f"Результаты сохранены в {OUTPUT_FILE}")
 

@@ -45,7 +45,7 @@ logger.addHandler(fh)
 def create_target_table(conn):
     conn.execute("""
     CREATE TABLE IF NOT EXISTS FuturesProcessed (
-        TRADEDATE TEXT PRIMARY KEY,
+        TRADEDATE TEXT PRIMARY KEY UNIQUE NOT NULL,
         SECID TEXT,
         OPEN REAL,
         LOW REAL,
