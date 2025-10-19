@@ -108,27 +108,27 @@ def simulate(df, start_date: str):
             past_loaded_at.append(row['loaded_at'])
             continue
 
-        # Берем top эмбеддинги
+        # Берем top эмбеддинги по косинусному сходству (количество TOP_N)
         top_H2 = [past_H2[i] for i in top_idx]
         top_percentile = [past_percentiles[i] for i in top_idx]
 
-        # Проверка порогов Percentile
+        # Проверка порогов Percentile заданных в PERCENTILE_THRESHOLDS
         if top_percentile[0] > PERCENTILE_THRESHOLDS[0] and \
                 top_percentile[1] > PERCENTILE_THRESHOLDS[1] and \
                 top_percentile[2] > PERCENTILE_THRESHOLDS[2]:
 
             # Все три H2 положительные
             if all(h > 0 for h in top_H2):
-                if row['H2'] > 0:
+                if row['H2'] > 0:  # Рост в течении следующих 2 часов
                     results.append({'loaded_at': row['loaded_at'], 'H2': abs(row['H2']), 'dir': 'buy'})  #
-                elif row['H2'] < 0:
+                elif row['H2'] < 0:  # Падение в течении следующих 2 часов
                     results.append({'loaded_at': row['loaded_at'], 'H2': -abs(row['H2']), 'dir': 'buy'})
 
             # Все три H2 отрицательные
             elif all(h < 0 for h in top_H2):
-                if row['H2'] < 0:
+                if row['H2'] < 0:  # Падение в течении следующих 2 часов
                     results.append({'loaded_at': row['loaded_at'], 'H2': abs(row['H2']), 'dir': 'sell'})  #
-                elif row['H2'] > 0:
+                elif row['H2'] > 0:  # Рост в течении следующих 2 часов
                     results.append({'loaded_at': row['loaded_at'], 'H2': -abs(row['H2']), 'dir': 'sell'})
 
         # Сохраняем текущий эмбеддинг для будущих сравнений
