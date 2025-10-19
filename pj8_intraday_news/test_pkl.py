@@ -24,7 +24,8 @@ df['loaded_at'] = pd.to_datetime(df['metadata'].apply(lambda x: x['loaded_at']))
 df = df.sort_values('loaded_at').reset_index(drop=True)
 
 # Вывод первых 20 строк
-print(df.head(20))
+print(df['embedding'].head(20))
+print(df['embedding'].tail(20))
 
 # Если нужно вывести все строки, можно использовать
 # pd.set_option('display.max_rows', None)

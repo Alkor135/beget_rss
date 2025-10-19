@@ -99,8 +99,10 @@ def main():
     print("\n=== Содержимое кэша (md5 → source → date → next_bar) ===")
     for item in cache:
         md5 = item["id"]
+        embedding = item["embedding"]
         meta = item["metadata"]
-        print(f"{GREEN if md5 in md_files.values() else YELLOW}{md5} → {meta['source']} → {meta['date']} → next_bar={meta['next_bar']}{RESET}")
+        print(f"{GREEN if md5 in md_files.values() else YELLOW}"
+              f"{md5} → {meta['source']} → {meta['date']} → next_bar={meta['next_bar']} embedding={embedding[:3]}{RESET}")
 
     # Проверка соответствия дат
     missing_in_db = sorted(cache_dates - db_dates)
