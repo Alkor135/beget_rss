@@ -41,9 +41,9 @@ except Exception as e:
 # Настройки (можно править)
 # ----------------------
 CACHE_FILE = "news_h2.pkl"
-START_DATE = "2025-10-01"  # дата начала теста (включая)
+START_DATE = "2025-09-28"  # дата начала теста (включая)
 TOP_N = 3  # количество ближайших похожих
-PERCENTILE_THRESHOLDS = [0.95, 0.95, 0.95]  # пороги по перцентилю для топ-3
+PERCENTILE_THRESHOLDS = [0.9, 0.9, 0.9]  # пороги по перцентилю для топ-3
 OUTPUT_FILE = "simulate_trade_results_faiss.xlsx"
 EMBED_DIM = 1024  # размерность эмбеддингов bge-m3 (как было указано)
 # ----------------------
@@ -93,10 +93,11 @@ def prepare_df(cache_data: list) -> pd.DataFrame:
 
     # Нормализация L2
     def l2_normalize(vec):
+        vec = vec.astype(np.float32)
         norm = np.linalg.norm(vec)
         return vec / norm if norm > 0 else vec
 
-    df["embedding_norm"] = df["embedding"].apply(l2_normalize).astype(np.float32)
+    df["embedding_norm"] = df["embedding"].apply(l2_normalize)
 
     df = df.sort_values("loaded_at").reset_index(drop=True)
     return df
@@ -206,17 +207,17 @@ def simulate_with_faiss(df: pd.DataFrame, start_date: str):
     result_df["loaded_at"] = pd.to_datetime(result_df["loaded_at"])
     result_df = result_df.sort_values(by="loaded_at", ascending=True).reset_index(drop=True)
 
-    # Фильтрация: между соседними сделками >= 2 часа (оставляем первую и те, где diff >= 2 часа)
-    result_df["time_diff"] = result_df["loaded_at"].diff()
-    result_df = result_df[(result_df["time_diff"].isna()) | (result_df["time_diff"] >= pd.Timedelta(hours=2))]
-    result_df = result_df.drop(columns=["time_diff"]).reset_index(drop=True)
+    # # Фильтрация: между соседними сделками >= 2 часа (оставляем первую и те, где diff >= 2 часа)
+    # result_df["time_diff"] = result_df["loaded_at"].diff()
+    # result_df = result_df[(result_df["time_diff"].isna()) | (result_df["time_diff"] >= pd.Timedelta(hours=2))]
+    # result_df = result_df.drop(columns=["time_diff"]).reset_index(drop=True)
 
     return result_df
 
 
 def main():
     print("Загрузка кэша эмбеддингов...")
-    cache_data = load_cache(CACHE_FILE)
+    cache_data = load_cache(CACHE_FILE)  # Загрузка кэша из pickle
     print(f"Загружено записей из кэша: {len(cache_data)}")
 
     # Возьмём первый embedding из кэша ============================================================
@@ -236,11 +237,17 @@ def main():
         print(" - Первые 10 значений:", first_emb[:10])
     # ============================================================================================
 
-    df = prepare_df(cache_data)
+    df = prepare_df(cache_data)  # Подготовка DataFrame
     print(f"После фильтрации (H2/Percentile) и подготовки: {len(df)} записей")
 
     print("Запуск симуляции с FAISS...")
     results_df = simulate_with_faiss(df, START_DATE)
+
+    # Преобразуем столбец loaded_at в datetime
+    results_df['loaded_at'] = pd.to_datetime(results_df['loaded_at'])
+    # Оставляем строки с временем 09:00:00 и позже
+    results_df = results_df[results_df['loaded_at'].dt.time >= pd.to_datetime('09:00:00').time()]
+    results_df['H2_cumsum'] = results_df['H2'].cumsum()
     print(f"Сделок после фильтров: {len(results_df)}")
 
     # Сохранение результатов в Excel (если есть)
