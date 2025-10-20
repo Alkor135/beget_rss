@@ -70,7 +70,7 @@ def prepare_df(cache_data: list) -> pd.DataFrame:
         norm = np.linalg.norm(vec)
         return vec / norm if norm > 0 else vec
 
-    df["embedding_norm"] = df["embedding"].apply(l2_normalize)
+    df["embedding"] = df["embedding"].apply(l2_normalize)
 
     df = df.sort_values("loaded_at").reset_index(drop=True)
     return df
@@ -85,10 +85,10 @@ def simulate(df: pd.DataFrame, start_date: str):
     unique_dates = np.array(sorted(df["date"].unique()))
 
     # DF с ембеддингами для которых ищем схожие ембеддинги на истории
-    df_tail = df[df["date"] >= start_ts].copy()
+    df_tail = df[df["date"] >= start_ts.date()].copy()
 
     for idx, row in tqdm(df_tail.iterrows(), total=len(df_tail), desc="Симуляция новостей"):
-        index = np.where(unique_dates == row["date"])[0]
+        index = np.where(unique_dates == row["date"])[0][0]
         for date_df in unique_dates[:index]:
             df_date = df[df['date'] == date_df].copy()
 
@@ -106,6 +106,7 @@ def main():
     print("Запуск симуляции")
     results_df = simulate(df, START_DATE)
     print(results_df)
+    print(results_df.columns.tolist())
 
     # # Преобразуем столбец loaded_at в datetime
     # results_df['loaded_at'] = pd.to_datetime(results_df['loaded_at'])
