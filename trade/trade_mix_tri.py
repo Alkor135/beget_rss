@@ -6,9 +6,9 @@ import logging
 # --- Конфигурация ---
 # Торгуемые инструменты и количество
 ticker_close = 'MXZ5'  # Инструмент для закрытия позиции
-quantity_close = '3'
+quantity_close = '1'
 ticker_open = 'MXZ5'  # Инструмент для открытия новой позиции
-quantity_open = '3'
+quantity_open = '1'
 ticker_lc = 'mix'  # Название инструмента в нижнем регистре для путей
 
 # Пути к файлам
