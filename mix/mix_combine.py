@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """
-rts_backtesting_dynamic_max_investing_by_date.py
+rts_combine.py
+#!/usr/bin/env python3
 ================================================
-Комбинированный бэктест:
-1. Рассчитывает cumulative_next_bar_pips для max_prev_files ∈ [3..30].
-2. Определяет оптимальный max_prev_files (max_prev_value) для каждой даты.
-3. Запускает симуляцию торговли с динамическим max_prev_files.
+Комбинированный реалистичный бэктест:
+
+1. Для каждой даты рассчитывает cumulative_next_bar_pips при max_prev_files ∈ [3..30].
+2. Определяет оптимальный max_prev_files для каждой даты.
+3. Использует значение, найденное на предыдущей сессии (реалистичный сдвиг).
+4. Выполняет симуляцию торговли и сохраняет результаты в Excel.
 """
 
 import pandas as pd
@@ -19,11 +22,11 @@ SETTINGS_FILE = Path(__file__).parent / "settings.yaml"
 with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
     settings = yaml.safe_load(f)
 
-ticker = settings.get('ticker', "MIX")
+ticker = settings.get('ticker', "RTS")
 ticker_lc = ticker.lower()
 provider = settings.get('provider', 'investing')
 min_prev_files = settings.get('min_prev_files', 2)
-start_date = settings.get('start_date', '2025-07-01')
+start_date = settings.get('start_date', '2025-08-01')
 
 md_path = Path(settings['md_path'].replace('{ticker_lc}', ticker_lc).replace('{provider}', provider))
 cache_file = Path(settings['cache_file'].replace('{ticker_lc}', ticker_lc).replace('{provider}', provider))
@@ -86,11 +89,11 @@ def load_cache(path):
     with open(path, 'rb') as f:
         return pickle.load(f)
 
-# === Расчёт cumulative_next_bar_pips для всех max_prev_files ===
+# === Этап 1: расчёт cumulative_next_bar_pips для всех max_prev_files ===
 def compute_multi_max(documents, cache, quotes_df, min_prev_files):
     logger.info("=== Этап 1: расчёт multi-max для диапазона 3..30 ===")
     all_results = pd.DataFrame()
-    for max_prev in range(3, 31):
+    for max_prev in range(4, 31):
         results = []
         for test_idx in range(min_prev_files, len(documents)):
             test_doc = documents[test_idx]
@@ -140,14 +143,13 @@ def main():
     docs = load_md_files(md_path)
     cache = load_cache(cache_file)
 
-    # Этап 1: рассчитываем cumulative для каждого max_prev_files
+    # Этап 1: multi-max
     all_results = compute_multi_max(docs, cache, quotes, min_prev_files)
-
     if all_results.empty:
         logger.error("Нет данных для расчёта multi-max.")
         return
 
-    # Этап 2: определяем max_prev_value по каждой дате
+    # Этап 2: оптимальный max_prev_files для каждой даты
     logger.info("=== Этап 2: вычисление max_prev_value для каждой даты ===")
     max_cols = [c for c in all_results.columns if c.startswith('max_')]
     per_date_max = {}
@@ -158,14 +160,24 @@ def main():
         col = valid.idxmax()
         per_date_max[row['test_date']] = int(col.split('_')[1])
 
-    # Этап 3: динамическая симуляция
-    logger.info("=== Этап 3: симуляция торговли с динамическим max_prev_files ===")
+    # ⚡ Реалистичный сдвиг: используем значение предыдущей даты
+    dates_sorted = sorted(per_date_max.keys())
+    shifted_max = {}
+    for i in range(1, len(dates_sorted)):
+        prev_date = dates_sorted[i - 1]
+        curr_date = dates_sorted[i]
+        shifted_max[curr_date] = per_date_max[prev_date]
+
+    logger.info(f"Сдвинутые значения max_prev_files созданы для {len(shifted_max)} дат")
+
+    # Этап 3: симуляция торговли
+    logger.info("=== Этап 3: симуляция торговли с реалистичным max_prev_files ===")
     results = []
     for doc in docs:
         test_date = doc.metadata['date']
-        if test_date < start_date or test_date not in per_date_max:
+        if test_date < start_date or test_date not in shifted_max:
             continue
-        max_prev = per_date_max[test_date]
+        max_prev = shifted_max[test_date]
         real = doc.metadata['next_bar']
         if real in ['unknown', 'None']:
             continue
@@ -200,7 +212,7 @@ def main():
             'max_prev_files': max_prev,
             'next_bar_pips': pips
         })
-        logger.info(f"{test_date}: max_prev={max_prev}, pred={pred}, real={real}, ok={is_correct}")
+        logger.info(f"{test_date}: max_prev(prev_day)={max_prev}, pred={pred}, real={real}, ok={is_correct}")
 
     if not results:
         logger.error("Нет результатов для симуляции.")
@@ -208,8 +220,8 @@ def main():
 
     df = pd.DataFrame(results)
     df['cumulative_next_bar_pips'] = df['next_bar_pips'].cumsum()
-    # out_file = output_dir / f'{ticker_lc}_backtest_results_dynamic_{provider}.xlsx'
-    out_file = f'{ticker_lc}_backtest_results_dynamic_{provider}.xlsx'
+    # out_file = output_dir / f'{ticker_lc}_backtest_results_dynamic_shifted_{provider}.xlsx'
+    out_file = f'{ticker_lc}_backtest_results_dynamic_shifted_{provider}.xlsx'
     df.to_excel(out_file, index=False, engine='openpyxl')
     logger.info(f"✅ Результаты сохранены в {out_file}")
 
