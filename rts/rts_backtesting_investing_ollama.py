@@ -25,9 +25,9 @@ with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
     settings = yaml.safe_load(f)
 
 # ==== Параметры ====
-ticker = settings['ticker']
+ticker = settings.get('ticker', "RTS")  # Тикер инструмента
 ticker_lc = ticker.lower()
-provider = settings['provider']  # Провайдер RSS новостей
+provider = settings.get('provider', 'investing')  # Провайдер RSS новостей
 url_ai = settings['url_ai']  # Ollama API без тайм-аута
 model_name = settings['model_name']  # Ollama модель
 min_prev_files = settings['min_prev_files']  # Минимальное количество предыдущих файлов

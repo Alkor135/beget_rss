@@ -13,6 +13,8 @@ num_mds: 100  # Количество последних интервалов д�
 num_dbs: 4  # Количество последних файлов БД новостей для обработки
 start_date_download_minutes: '2025-06-24'  # Дата начала загрузки минутных свечей
 test_days: 22  # Количество дней для тестирования
+end_date_limit: "2025-10-15"  # Дата окончания обработки данных rts_backtest_multi_max_investing_by_date.py
+start_date: "2025-07-01"  # Дата начала динамического rts_backtesting_dynamic_max_investing_by_date.py
 
 md_path: 'C:/Users/Alkor/gd/md_{ticker_lc}_{provider}'
 cache_file: 'C:/Users/Alkor/PycharmProjects/beget_rss/{ticker_lc}/{ticker_lc}_embeddings_{provider}_ollama.pkl'
