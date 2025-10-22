@@ -31,7 +31,8 @@ ticker = settings.get('ticker', "RTS")  # Тикер инструмента
 ticker_lc = ticker.lower()
 provider = settings.get('provider', 'investing')  # Провайдер RSS новостей
 min_prev_files = settings.get('min_prev_files', 2)  # Минимальное количество предыдущих файлов
-test_days = settings.get('test_days', 22)  #
+test_days = settings.get('test_days', None)  # Количество дней для теста (если нужно ограничить)
+end_date_limit = settings.get('end_date_limit', None)  # например '2025-09-30'
 
 md_path = Path(  # Путь к markdown-файлам
     settings['md_path'].replace('{ticker_lc}', ticker_lc).replace('{provider}', provider))
@@ -42,10 +43,10 @@ output_dir = Path(  # Путь к папке с результатами
     settings['output_dir'].replace('{ticker_lc}', ticker_lc).replace('{provider}', provider))
 log_file = Path(  # Путь к файлу лога
     output_dir / 'log' / # Папка для логов
-    fr'{ticker_lc}_backtest_multi_max_{provider}.txt')  # Файл лога
+    fr'{ticker_lc}_backtest_multi_max_{provider}_{end_date_limit}.txt')  # Файл лога
 output_file = Path(  # Итоговый XLSX файл
     fr'C:\Users\Alkor\PycharmProjects\beget_rss\{ticker_lc}'
-    fr'\{ticker_lc}_backtest_results_multi_max_{provider}.xlsx')
+    fr'\{ticker_lc}_backtest_results_multi_max_{provider}_{end_date_limit}.xlsx')
 
 # Настройка логирования
 log_file.parent.mkdir(parents=True, exist_ok=True)
@@ -210,6 +211,13 @@ def main():
     # Создание итогового DataFrame
     all_results = pd.DataFrame()
 
+    # ⚡️ Если задана конечная дата — обрежем документы и котировки
+    if end_date_limit:
+        documents = [doc for doc in documents if doc.metadata['date'] <= end_date_limit]
+        quotes_df = quotes_df.loc[quotes_df.index <= end_date_limit]
+        logger.info(
+            f"Данные ограничены по дату: {end_date_limit}. Использовано документов: {len(documents)}")
+
     for max_prev in range(3, 31):  # от 3 до 30
         logger.info(f"Проводим backtest для max_prev_files md файлов = {max_prev}")
         results_df = backtest_predictions(documents, cache, quotes_df, max_prev)
@@ -220,11 +228,37 @@ def main():
             else:
                 all_results = all_results.merge(results_df, on='test_date', how='outer')
 
+    # === Вывод информации о максимуме в консоль и лог===
+    if not all_results.empty:
+        # Найдём последнюю строку по дате
+        last_row = all_results.sort_values('test_date').iloc[-1]
+
+        # Найдём все колонки, начинающиеся с 'max_'
+        max_cols = [col for col in all_results.columns if col.startswith('max_')]
+
+        # Среди них — колонку с максимальным значением
+        col_with_max = last_row[max_cols].idxmax()
+        max_value = last_row[col_with_max]
+
+        # Извлекаем число из названия колонки ('max_17' → 17)
+        max_prev_value = int(col_with_max.split('_')[1])
+
+        # Получаем дату последней строки
+        last_date = last_row['test_date']
+
+        # Вывод в консоль и лог
+        logger.info(f"📅 Последняя дата: {last_date}")
+        logger.info(f"🏆 Колонка с максимумом: {col_with_max} (max_prev_files = {max_prev_value})")
+        logger.info(f"📈 Максимальное значение: {max_value:.2f}")
+
+    # === Вывод результатов в Excel файл ===
     if not all_results.empty:
         all_results.to_excel(output_file, index=False, engine='openpyxl')
         logger.info(f"Результаты сохранены в {output_file}")
+
     else:
         logger.error("Нет результатов для сохранения.")
+
 
 if __name__ == '__main__':
     main()
