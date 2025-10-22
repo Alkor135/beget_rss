@@ -23,9 +23,9 @@ with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
     settings = yaml.safe_load(f)
 
 # ==== Параметры ====
-ticker = settings['ticker']
+ticker = settings.get('ticker', "RTS")  # Тикер инструмента
 ticker_lc = ticker.lower()
-provider = settings['provider']
+provider = settings.get('provider', 'investing')  # Провайдер RSS новостей
 cache_file = Path(  # Путь к кэшу
     settings['cache_file'].replace('{ticker_lc}', ticker_lc).replace('{provider}', provider))
 path_db_day = Path(settings['path_db_day'].replace('{ticker}', ticker))
@@ -68,7 +68,7 @@ def load_db_dates(path_db_quote: Path):
         rows = conn.execute("SELECT DISTINCT TRADEDATE FROM Futures ORDER BY TRADEDATE").fetchall()
 
     db_dates = {str(r[0]) for r in rows}
-    logger.info(f"Из базы загружено {len(db_dates)} уникальных дат")
+    logger.info(f"Из базы котировок загружено {len(db_dates)} уникальных дат")
     return db_dates
 
 
@@ -113,10 +113,10 @@ def main():
         for d in missing_in_db:
             print(f"  - {d}")
     else:
-        print(f"{GREEN}✅ Все даты из кэша найдены в БД{RESET}")
+        print(f"{GREEN}✅ Все даты из кэша ембеддингов найдены в БД котировок{RESET}")
 
     if missing_in_cache:
-        print(f"{YELLOW}⚠️ Даты есть в БД, но отсутствуют в кэше:{RESET}")
+        print(f"{YELLOW}⚠️ Даты есть в БД котировок, но отсутствуют в кэше ембеддингов:{RESET}")
         for d in missing_in_cache:
             print(f"  - {d}")
     else:
