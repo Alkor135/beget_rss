@@ -26,7 +26,7 @@ from tqdm import tqdm
 # Настройки
 # ----------------------
 NEWS_DB_FOLDER = Path(r"C:\Users\Alkor\gd\db_rss")
-FUTURES_DB_FILE = r"C:\Users\Alkor\PycharmProjects\beget_rss\pj8_intraday_news\minutes_RTS_processed_p10.sqlite"
+FUTURES_DB_FILE = r"minutes_RTS_processed_p10.sqlite"
 CACHE_FILE = "news_h2.pkl"
 
 URL_AI = 'http://localhost:11434/api/embeddings'
