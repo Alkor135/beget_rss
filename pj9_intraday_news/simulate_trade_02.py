@@ -108,19 +108,19 @@ def main():
     print(results_df)
     print(results_df.columns.tolist())
 
-    # # Преобразуем столбец loaded_at в datetime
-    # results_df['loaded_at'] = pd.to_datetime(results_df['loaded_at'])
-    # # Оставляем строки с временем 09:00:00 и позже
-    # results_df = results_df[results_df['loaded_at'].dt.time >= pd.to_datetime('09:00:00').time()]
-    # results_df['H2_cumsum'] = results_df['H2'].cumsum()
-    # print(f"Сделок после фильтров: {len(results_df)}")
-    #
-    # # Сохранение результатов в Excel (если есть)
-    # if not results_df.empty:
-    #     results_df.to_excel(OUTPUT_FILE, index=False)
-    #     print(f"✅ Результаты сохранены в {OUTPUT_FILE}")
-    # else:
-    #     print("❌ Результаты пусты — файл не создан.")
+    # Преобразуем столбец loaded_at в datetime
+    results_df['loaded_at'] = pd.to_datetime(results_df['loaded_at'])
+    # Оставляем строки с временем 09:00:00 и позже
+    results_df = results_df[results_df['loaded_at'].dt.time >= pd.to_datetime('09:00:00').time()]
+    results_df['H2_cumsum'] = results_df['H2'].cumsum()
+    print(f"Сделок после фильтров: {len(results_df)}")
+
+    # Сохранение результатов в Excel (если есть)
+    if not results_df.empty:
+        results_df.to_excel(OUTPUT_FILE, index=False)
+        print(f"✅ Результаты сохранены в {OUTPUT_FILE}")
+    else:
+        print("❌ Результаты пусты — файл не создан.")
 
 
 if __name__ == "__main__":
