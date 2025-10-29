@@ -1,5 +1,6 @@
 import sqlite3
 import pandas as pd
+from pathlib import Path
 
 # Настройки для отображения широкого df pandas
 pd.options.display.width = 1200
@@ -35,3 +36,21 @@ def show_head_tail_sorted(db_path):
 
 for path in db_paths:
     show_head_tail_sorted(path)
+
+df = pd.read_pickle(Path('minutes_RTS_processed_p10.pkl'))
+print(df)
+
+na_count = df["Percentile"].isna().sum()
+total = len(df)
+na_share = na_count / total if total else 0
+print(f'Для колонки Percentile: {na_count=}, {total=}, {na_share=}')
+
+print(f'\nДля колонки H2_abs доля: {df["H2_abs"].isna().mean()}')
+
+print("\nДоля NA в H2_abs:", df["H2_abs"].isna().mean())
+print("Доля NA в Percentile:", df["Percentile"].isna().mean())
+
+df["TRADEDATE_DATE"] = df["TRADEDATE"].dt.date
+print("\nУникальных дат:", df["TRADEDATE_DATE"].nunique())
+print("Минимум/максимум дат:", df["TRADEDATE_DATE"].min(), df["TRADEDATE_DATE"].max())
+
