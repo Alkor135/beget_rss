@@ -129,8 +129,8 @@ def add_percentile_prev_trading_bars(df: pd.DataFrame, bars_back: int = 8000) ->
     window = h2_prev.rolling(window=bars_back, min_periods=max(1, min(50, bars_back)))
 
     # Быстрые перцентили из скользящего окна
-    df['perc_25'] = window.quantile(0.25)
-    df['perc_75'] = window.quantile(0.75)
+    df['perc_25'] = window.quantile(0.1)
+    df['perc_75'] = window.quantile(0.9)
 
     return df
 
