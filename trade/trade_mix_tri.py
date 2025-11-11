@@ -114,7 +114,7 @@ current_predict = get_direction(current_filepath)
 prev_predict = get_direction(prev_filepath)
 
 if current_predict is None or prev_predict is None:
-    logger.warning("Не удалось найти предсказанное направление в одном или обоих файлах.")
+    logger.warning("Не удалось найти предсказанное направление в одном или обоих файлах.\n")
     exit()
 
 # --- Формирование сигнала ---
