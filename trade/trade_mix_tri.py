@@ -82,7 +82,7 @@ if not current_filepath.exists() or current_filepath.stat().st_size == 0:
     exit(1)
 
 # Сбор и сортировка всех .txt файлов по дате
-files = []
+files = []  # Список имен всех файлов предсказаний
 for filepath in predict_path.glob("*.txt"):
     try:
         file_date = datetime.strptime(filepath.stem, "%Y-%m-%d").date()
@@ -90,16 +90,17 @@ for filepath in predict_path.glob("*.txt"):
     except ValueError:
         continue
 
-files.sort(key=lambda x: x[0], reverse=True)
+files.sort(key=lambda x: x[0], reverse=True)  # Сортировка списка имен всех файлов с предсказаниями
 
 # Поиск текущего и предыдущего файла
-current_date = today
-prev_filename = None
+current_date = today  # Текущая дата
+prev_filename = None  # Имя файла с предыдущим предсказанием
 for i, (file_date, filename) in enumerate(files):
     if file_date == current_date:
         if i + 1 < len(files):
             prev_filename = files[i + 1][1]
         break
+logger.info(f"Предыдущий файл предсказаний: {prev_filename}")
 
 if prev_filename is None:
     logger.info("Предыдущий файл не найден.")
