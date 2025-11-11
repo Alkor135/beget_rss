@@ -192,8 +192,8 @@ if trade_content:
     with trade_filepath.open('a', encoding='cp1251') as f:
         f.write(trade_content)
     logger.info(f'{prev_predict=}, {current_predict=}')
-    logger.info(f"Добавлена транзакция {trade_direction} с TRANS_ID={trans_id} в файл {trade_filepath}.")
+    logger.info(f"Добавлена транзакция {trade_direction} с TRANS_ID={trans_id} в файл {trade_filepath}.\n")
 else:
     logger.info(
         f"На {today} условия для сигналов BUY или SELL не выполнены. "
-        f"{prev_predict=}, {current_predict=}")
+        f"{prev_predict=}, {current_predict=}\n")
