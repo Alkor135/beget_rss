@@ -78,7 +78,7 @@ def get_next_trans_id(trade_filepath):
 # --- Основная логика ---
 # Проверка наличия файла прогноза на сегодня
 if not current_filepath.exists() or current_filepath.stat().st_size == 0:
-    logger.warning(f"Файл {current_filepath} не существует или пуст.")
+    logger.warning(f"Файл {current_filepath} не существует или пуст.\n")
     exit(1)
 
 # Сбор и сортировка всех .txt файлов по дате
@@ -100,13 +100,14 @@ for i, (file_date, filename) in enumerate(files):
         if i + 1 < len(files):
             prev_filename = files[i + 1][1]
         break
-logger.info(f"Предыдущий файл предсказаний: {prev_filename}")
 
 if prev_filename is None:
-    logger.info("Предыдущий файл не найден.")
+    logger.info("Предыдущий файл не найден.\n")
     exit(1)
 
 prev_filepath = predict_path / prev_filename
+logger.info(f"Предыдущий файл предсказаний: {prev_filepath}")
+logger.info(f"Текущий файл предсказаний: {current_filepath}")
 
 # Получение направлений из текущего и предыдущего файлов
 current_predict = get_direction(current_filepath)
