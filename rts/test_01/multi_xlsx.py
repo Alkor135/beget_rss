@@ -9,7 +9,7 @@ import logging
 import yaml
 
 
-SETTINGS_FILE = Path(__file__).parent / "settings.yaml"
+SETTINGS_FILE = Path(__file__).parent.parent / "settings.yaml"
 
 with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
     settings = yaml.safe_load(f)
@@ -24,7 +24,7 @@ cache_file = Path(settings['cache_file'].replace('{ticker_lc}', ticker_lc).repla
 path_db_day = Path(settings['path_db_day'].replace('{ticker}', ticker))
 output_dir = Path(settings['output_dir'].replace('{ticker_lc}', ticker_lc).replace('{provider}', provider))
 
-log_file = output_dir / 'log' / fr'{ticker_lc}_backtest_multi_max_{provider}_MULTI.txt'
+log_file = Path(fr'{ticker_lc}_backtest_multi_max_{provider}_MULTI.txt')
 log_file.parent.mkdir(parents=True, exist_ok=True)
 
 logger = logging.getLogger(__name__)
@@ -172,7 +172,7 @@ def main():
                 all_results = all_results.merge(df, on='test_date', how='outer')
 
         if not all_results.empty:
-            out_file = output_dir / f"{ticker_lc}_backtest_results_multi_max_{provider}_{date_str}.xlsx"
+            out_file = f"{date_str}.xlsx"
             all_results.to_excel(out_file, index=False, engine='openpyxl')
             logger.info(f"✔️ Создан файл: {out_file}")
         else:
