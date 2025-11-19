@@ -39,12 +39,15 @@ pl_by_month = monthly.groupby("Месяц", as_index=False)["Profit/Loss к пр
 
 # Для удобной оси X переведем период в Timestamp (конец месяца)
 pl_by_month["Месяц_dt"] = pl_by_month["Месяц"].dt.to_timestamp()
+# Переименование колонки
+pl_by_month = pl_by_month.rename(columns={"Profit/Loss к предыдущему": "Profit/Loss"})
 
-print(pl_by_month)
+print("\nProfit/Loss по месяцам:")
+print(pl_by_month[['Месяц', 'Profit/Loss']])
 
 plt.figure(figsize=(10, 5))
 ax = plt.gca()
-ax.bar(pl_by_month["Месяц_dt"], pl_by_month["Profit/Loss к предыдущему"], width=20)
+ax.bar(pl_by_month["Месяц_dt"], pl_by_month["Profit/Loss"], width=20)
 
 # Формат оси X: ГГГГ-ММ
 ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m"))
@@ -55,7 +58,7 @@ plt.xlabel("Месяц")
 plt.ylabel("Сумма Profit/Loss")
 
 # Подписи числовых значений над столбцами
-for x, y in zip(pl_by_month["Месяц_dt"], pl_by_month["Profit/Loss к предыдущему"]):
+for x, y in zip(pl_by_month["Месяц_dt"], pl_by_month["Profit/Loss"]):
     ax.text(x, y, f"{y:,.0f}", ha="center", va="bottom")
 
 plt.tight_layout()
