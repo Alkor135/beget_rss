@@ -18,7 +18,7 @@ ticker = settings.get('ticker', "RTS")
 ticker_lc = ticker.lower()
 provider = settings.get('provider', 'investing')
 min_prev_files = settings.get('min_prev_files', 2)
-test_days = settings.get('test_days', 22)     #  ← Добавлено
+test_days = settings.get('test_days', 22) + 1   #  ← Добавлено
 
 md_path = Path(settings['md_path'].replace('{ticker_lc}', ticker_lc).replace('{provider}', provider))
 cache_file = Path(settings['cache_file'].replace('{ticker_lc}', ticker_lc).replace('{provider}', provider))
