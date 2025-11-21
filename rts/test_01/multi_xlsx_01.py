@@ -23,7 +23,8 @@ test_days = settings.get('test_days', 22) + 1   #  ← Добавлено
 md_path = Path(settings['md_path'].replace('{ticker_lc}', ticker_lc).replace('{provider}', provider))
 cache_file = Path(settings['cache_file'].replace('{ticker_lc}', ticker_lc).replace('{provider}', provider))
 path_db_day = Path(settings['path_db_day'].replace('{ticker}', ticker))
-output_dir = Path(settings['output_dir'].replace('{ticker_lc}', ticker_lc).replace('{provider}', provider))
+# output_dir = Path(settings['output_dir'].replace('{ticker_lc}', ticker_lc).replace('{provider}', provider))
+xlsx_path = Path(__file__).parent / "xlsx_files"
 
 log_file = Path(fr'{ticker_lc}_backtest_multi_max_{provider}_MULTI.txt')
 log_file.parent.mkdir(parents=True, exist_ok=True)
@@ -182,7 +183,7 @@ def main():
                 all_results = all_results.merge(df, on='test_date', how='outer')
 
         if not all_results.empty:
-            out_file = f"{date_str}.xlsx"
+            out_file = Path(xlsx_path / f"{date_str}.xlsx")
             all_results.to_excel(out_file, index=False, engine='openpyxl')
             logger.info(f"✔️ Создан файл: {out_file}")
         else:
