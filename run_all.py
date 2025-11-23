@@ -60,6 +60,13 @@ SCRIPTS = [
     r"spyf\spyf_predict_next_session_investing_ollama.py",
     r"spyf\spyf_backtesting_investing_ollama.py",
     r"spyf\spyf_backtest_multi_max_investing.py",
+
+    r"ng\ng_download_minutes_to_db.py",
+    r"ng\ng_21_00_convert_minutes_to_days.py",
+    r"ng\ng_21_00_db_investing_month_to_md.py",
+    r"ng\ng_predict_next_session_investing_ollama.py",
+    r"ng\ng_backtesting_investing_ollama.py",
+    r"ng\ng_backtest_multi_max_investing.py",
 ]
 
 def run_script(script: str) -> int:
