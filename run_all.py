@@ -18,20 +18,24 @@ SCRIPTS = [
     r"rts\rts_21_00_convert_minutes_to_days.py",
     r"rts\rts_21_00_db_investing_month_to_md.py",
     r"rts\rts_predict_next_session_investing_ollama.py",
+    r"rts\rts_backtesting_investing_ollama.py",
+    r"rts\rts_backtest_multi_max_investing.py",
+    r"trade\trade_rts_tri.py",
 
     r"mix\mix_download_minutes_to_db.py",
     r"mix\mix_21_00_convert_minutes_to_days.py",
     r"mix\mix_21_00_db_investing_month_to_md.py",
     r"mix\mix_predict_next_session_investing_ollama.py",
-
-    r"trade\trade_rts_tri.py",
-    r"trade\trade_mix_tri.py",
-
-    r"rts\rts_backtesting_investing_ollama.py",
-    r"rts\rts_backtest_multi_max_investing.py",
-
     r"mix\mix_backtesting_investing_ollama.py",
     r"mix\mix_backtest_multi_max_investing.py",
+    r"trade\trade_mix_tri.py",
+
+    r"ng\ng_download_minutes_to_db.py",
+    r"ng\ng_21_00_convert_minutes_to_days.py",
+    r"ng\ng_21_00_db_investing_month_to_md.py",
+    r"ng\ng_predict_next_session_investing_ollama.py",
+    r"ng\ng_backtesting_investing_ollama.py",
+    r"ng\ng_backtest_multi_max_investing.py",
 
     r"br\br_download_minutes_to_db.py",
     r"br\br_21_00_convert_minutes_to_days.py",
@@ -61,18 +65,14 @@ SCRIPTS = [
     r"spyf\spyf_backtesting_investing_ollama.py",
     r"spyf\spyf_backtest_multi_max_investing.py",
 
-    r"ng\ng_download_minutes_to_db.py",
-    r"ng\ng_21_00_convert_minutes_to_days.py",
-    r"ng\ng_21_00_db_investing_month_to_md.py",
-    r"ng\ng_predict_next_session_investing_ollama.py",
-    r"ng\ng_backtesting_investing_ollama.py",
-    r"ng\ng_backtest_multi_max_investing.py",
-
     r"rts/test_01/multi_xlsx_01.py",
     r"rts/test_01/processing_xlsx.py",
 
     r"mix/test_01/multi_xlsx_01.py",
     r"mix/test_01/processing_xlsx.py",
+
+    r"ng/test_01/multi_xlsx_01.py",
+    r"ng/test_01/processing_xlsx.py",
 ]
 
 def run_script(script: str) -> int:

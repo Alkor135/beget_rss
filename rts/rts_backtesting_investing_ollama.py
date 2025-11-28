@@ -25,7 +25,7 @@ with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
     settings = yaml.safe_load(f)
 
 # ==== Параметры ====
-ticker = settings.get('ticker', "RTS")  # Тикер инструмента
+ticker = settings['ticker']
 ticker_lc = ticker.lower()
 provider = settings.get('provider', 'investing')  # Провайдер RSS новостей
 url_ai = settings['url_ai']  # Ollama API без тайм-аута

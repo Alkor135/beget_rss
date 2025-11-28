@@ -13,7 +13,7 @@ import hashlib
 import numpy as np
 import sqlite3
 from langchain_core.documents import Document
-import datetime
+from datetime import datetime
 import logging
 import yaml
 
@@ -27,7 +27,7 @@ with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
 # ==== Параметры ====
 ticker = settings['ticker']
 ticker_lc = ticker.lower()
-provider = settings['provider']  # Провайдер RSS новостей
+provider = settings.get('provider', 'investing')  # Провайдер RSS новостей
 url_ai = settings['url_ai']  # Ollama API без тайм-аута
 model_name = settings['model_name']  # Ollama модель
 min_prev_files = settings['min_prev_files']  # Минимальное количество предыдущих файлов
@@ -183,17 +183,17 @@ def main(max_prev_files: int = 8):
 
         # Преобразование даты
         try:
-            test_date_dt = datetime.datetime.strptime(test_date, '%Y-%m-%d')
+            test_date_dt = datetime.strptime(test_date, '%Y-%m-%d')
         except ValueError:
             logger.error(f"Некорректный формат даты: {test_date}")
             return
 
-        # Предыдущие документы (по дате, не больше max_prev_files)
+        # Предыдущие документы по дате, не больше даты теста
         prev_cache = sorted(
             [item for item in cache if
              item['metadata']['next_bar'] != "None" and
-             datetime.datetime.strptime(item['metadata']['date'], '%Y-%m-%d') < test_date_dt],
-            key=lambda x: datetime.datetime.strptime(x['metadata']['date'], '%Y-%m-%d'),
+             datetime.strptime(item['metadata']['date'], '%Y-%m-%d') < test_date_dt],
+            key=lambda x: datetime.strptime(x['metadata']['date'], '%Y-%m-%d'),
             reverse=True
         )[:max_prev_files]
 
