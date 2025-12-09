@@ -1,9 +1,10 @@
 """
 Скрипт для предсказания направления следующей свечи (next_bar) на основе markdown-файлов с новостями.
 Кэширует ембеддинги в pickle-файл, обновляет только новые/изменённые файлы.
-Ограничивает количество предыдущих файлов параметрами min_prev_files и max_prev_files.
+Предсказывает направление следующего бара для md файла с next_bar='None'.
+Для предсказаний ограничивает количество предыдущих файлов параметрами min_prev_files и max_prev_files.
 Предсказывает направление для документа с next_bar='None'.
-Все выводы сохраняются в текстовый файл в папке predict_ollama с именем {none_date}.txt.
+Все предсказания сохраняются в текстовый файл в папке predict_ollama с именем {none_date}.txt.
 Логи пишутся в файл и в консоль, файл лога перезаписывается при каждом запуске.
 Ембеддинги создает для новых и измененных файлов markdown, для остальных файлов, берет из кэша.
 Передача файлов для ембеддинга батчами по 1 файлу.
@@ -33,12 +34,12 @@ ticker_lc = ticker.lower()
 provider = settings['provider']  # Провайдер RSS новостей
 url_ai = settings['url_ai']  # Ollama API без тайм-аута
 model_name = settings['model_name']  # Ollama модель
-min_prev_files = settings['min_prev_files']  # Минимальное количество предыдущих файлов
-max_prev_files = settings['max_prev_files']  # Максимальное количество предыдущих файлов
+min_prev_files = settings['min_prev_files']  # Минимальное количество предыдущих файлов для предсказания
+max_prev_files = settings['max_prev_files']  # Максимальное количество предыдущих файлов для предсказания
 
 md_path = Path(  # Путь к markdown-файлам
     settings['md_path'].replace('{ticker_lc}', ticker_lc).replace('{provider}', provider))
-cache_file = Path(
+cache_file = Path(  # Путь к pkl-файлу с кэшем
     settings['cache_file'].replace('{ticker_lc}', ticker_lc).replace('{provider}', provider))
 output_dir = Path(  # Путь к папке с результатами
     settings['output_dir'].replace('{ticker_lc}', ticker_lc).replace('{provider}', provider))
