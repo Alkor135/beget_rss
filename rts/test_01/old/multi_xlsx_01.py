@@ -196,6 +196,8 @@ def main():
                 all_results = all_results.merge(df, on='test_date', how='outer')
 
         if not all_results.empty:
+            if not xlsx_path.exists():
+                xlsx_path.mkdir()
             out_file = Path(xlsx_path / f"{date_str}.xlsx")
             all_results.to_excel(out_file, index=False, engine='openpyxl')
             logger.info(f"✔️ Создан файл: {out_file}")
