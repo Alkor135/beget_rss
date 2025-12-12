@@ -58,7 +58,7 @@ md_path = Path(settings['md_path'].replace('{ticker_lc}', ticker_lc).replace('{p
 cache_file = Path(settings['cache_file'].replace('{ticker_lc}', ticker_lc).replace('{provider}', provider))
 path_db_day = Path(settings['path_db_day'].replace('{ticker}', ticker))
 
-# --------- НОВОЕ: START_DATE (как в processing_xlsx.py) ----------
+# --------- START_DATE (как в processing_xlsx.py) ----------
 # Значение читается из settings.yaml как 'start_date' в формате YYYY-MM-DD,
 # если не указано — используется значение, которое было в оригинальном processing_xlsx.py.
 START_DATE = settings.get('start_date', "2025-07-30")
@@ -66,7 +66,7 @@ START_DT = datetime.strptime(START_DATE, "%Y-%m-%d").date()
 # -----------------------------------------------------------------
 
 # =======================
-# ЛОГИРОВАНИЕ (НЕ МЕНЯЛОСЬ)
+# ЛОГИРОВАНИЕ
 # =======================
 logger = logging.getLogger("simulate_combined")
 logger.setLevel(logging.INFO)
@@ -76,16 +76,16 @@ if not logger.handlers:
     logger.addHandler(ch)
 
 # ========================================
-# ФУНКЦИИ: косинус/загрузка md/quotes/cache (НЕ МЕНЯЛОСЬ, только откомментированы)
+# ФУНКЦИИ: косинус/загрузка md/quotes/cache
 # ========================================
 def cosine_similarity(vec1, vec2):
-    """Косинусное сходство (НЕ МЕНЯЛОСЬ)."""
+    """Косинусное сходство."""
     v1, v2 = np.array(vec1), np.array(vec2)
     denom = np.linalg.norm(v1) * np.linalg.norm(v2)
     return float(np.dot(v1, v2) / denom) if denom != 0 else 0.0
 
 def load_markdown_files(directory):
-    """Загрузка markdown-файлов в объект Document (НЕ МЕНЯЛОСЬ)."""
+    """Загрузка markdown-файлов в объект Document."""
     files = sorted(directory.glob("*.md"), key=lambda f: f.stem)
     documents = []
     for file_path in files:
@@ -107,7 +107,7 @@ def load_markdown_files(directory):
     return documents
 
 def load_quotes(path_db_quote):
-    """Загрузка котировок и расчет next_bar_pips (НЕ МЕНЯЛОСЬ)."""
+    """Загрузка котировок и расчет next_bar_pips."""
     with sqlite3.connect(path_db_quote) as conn:
         df = pd.read_sql_query("SELECT TRADEDATE, OPEN, CLOSE FROM Futures", conn)
     df = df.sort_values('TRADEDATE')
@@ -117,18 +117,17 @@ def load_quotes(path_db_quote):
     return df.set_index('TRADEDATE')[['next_bar_pips']]
 
 def load_cache(cache_file_path):
-    """Загрузка кэша эмбеддингов (НЕ МЕНЯЛОСЬ)."""
+    """Загрузка кэша эмбеддингов."""
     with open(cache_file_path, 'rb') as f:
         return pickle.load(f)
 
 # ========================================
-# backtest_for_docs — оставляем логику (НЕ МЕНЯЛОСЬ)
+# backtest_for_docs — оставляем логику
 # ========================================
 def backtest_for_docs(documents, cache, quotes_df, max_prev_files):
     """
     Выполняет backtest для набора документов (входных cut_docs_effective)
     и возвращает DataFrame с колонками [test_date, cumulative] для данного max_prev_files.
-    (Логика НЕ МЕНЯЛАСЬ по сути — только формат и переменные)
     """
     rows = []
     for test_doc in documents[min_prev_files:]:
@@ -174,7 +173,7 @@ def run_backtest_to_numpy():
     - ПРОПУСКАЕТ даты до START_DATE (включительно START_DATE будет обработан).
     Возвращает: (dates_list, daily_arrays_list)
     """
-    # (НЕ МЕНЯЛОСЬ) загрузка данных
+    # загрузка данных
     quotes_df = load_quotes(path_db_day)
     documents = load_markdown_files(md_path)
     cache = load_cache(cache_file)
@@ -190,7 +189,7 @@ def run_backtest_to_numpy():
         date_str = documents[end_idx].metadata['date']
         date_dt = datetime.strptime(date_str, "%Y-%m-%d").date()
 
-        # ---- НОВОЕ: фильтрация по START_DATE ----
+        # ---- фильтрация по START_DATE ----
         # Пропускаем обработку дат раньше START_DATE.
         if date_dt < START_DT:
             continue
@@ -199,7 +198,7 @@ def run_backtest_to_numpy():
         logger.info(f"Backtest: обрабатываем дату {date_str}")
 
         cut_docs = documents[:end_idx + 1]
-        # (НЕ МЕНЯЛОСЬ) логика test_days
+        # логика test_days
         start_idx = max(min_prev_files, len(cut_docs) - test_days)
         cut_docs_effective = cut_docs[start_idx:]
 
@@ -309,7 +308,7 @@ def run_simulation(dates, daily_arrays):
     return df_rez
 
 # ========================================
-# ПОСТРОЕНИЕ ГРАФИКА (неизменно, просто воспроизвожу)
+# ПОСТРОЕНИЕ ГРАФИКА
 # ========================================
 def plot_results(df_rez, out_path):
     if df_rez.empty:
@@ -339,7 +338,7 @@ def plot_results(df_rez, out_path):
 # ГЛАВНАЯ: orchestration и сохранение результатов
 # ========================================
 def main():
-    logger.info("=== Запуск combined backtest + simulation (без промежуточных xlsx) ===")
+    logger.info("=== Запуск combined backtest + simulation ===")
     logger.info(f"START_DATE = {START_DATE} (фильтрация ранних дат)")
     dates, daily_arrays = run_backtest_to_numpy()
     logger.info(f"Сгенерировано дней (после фильтрации): {len(dates)}")
