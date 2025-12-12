@@ -66,14 +66,11 @@ SCRIPTS = [
     r"spyf\spyf_backtesting_investing_ollama.py",
     r"spyf\spyf_backtest_multi_max_investing.py",
 
-    r"rts/test_01/multi_xlsx_01.py",
-    r"rts/test_01/processing_xlsx.py",
+    r"rts/test_01/simulate_trade_01.py",
 
-    r"mix/test_01/multi_xlsx_01.py",
-    r"mix/test_01/processing_xlsx.py",
+    r"mix/test_01/simulate_trade_01.py",
 
     r"ng/test_01/multi_xlsx_01.py",
-    r"ng/test_01/processing_xlsx.py",
 ]
 
 def run_script(script: str) -> int:
