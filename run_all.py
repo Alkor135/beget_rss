@@ -28,7 +28,7 @@ SCRIPTS = [
     r"mix\mix_predict_next_session_investing_ollama.py",
     r"mix\mix_backtesting_investing_ollama.py",
     r"mix\mix_backtest_multi_max_investing.py",
-    r"trade\trade_mix_tri.py",
+    # r"trade\trade_mix_tri.py",
 
     r"ng\ng_download_minutes_to_db.py",
     r"ng\ng_21_00_convert_minutes_to_days.py",
@@ -36,7 +36,7 @@ SCRIPTS = [
     r"ng\ng_predict_next_session_investing_ollama.py",
     r"ng\ng_backtesting_investing_ollama.py",
     r"ng\ng_backtest_multi_max_investing.py",
-    r"trade\trade_ng_tri.py",
+    # r"trade\trade_ng_tri.py",
 
     r"br\br_download_minutes_to_db.py",
     r"br\br_21_00_convert_minutes_to_days.py",

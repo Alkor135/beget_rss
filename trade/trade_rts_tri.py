@@ -8,7 +8,7 @@ import logging
 ticker_close = 'RIZ5'  # Инструмент для закрытия позиции
 quantity_close = '1'
 ticker_open = 'RIZ5'  # Инструмент для открытия новой позиции
-quantity_open = '1'
+quantity_open = '2'
 ticker_lc = 'rts'  # Название инструмента в нижнем регистре для путей
 
 # Пути к файлам
