@@ -161,7 +161,7 @@ if ticker_close == ticker_open:
         )
 # Условие ролловера (тикеры разные)
 elif ticker_close != ticker_open:
-    # Условия для переворота позиций
+    # Условия для переворота позиций во время ролловера
     if current_predict == 'down' and prev_predict == 'up':
         trade_direction = 'SELL'
         trade_content = (
@@ -174,17 +174,17 @@ elif ticker_close != ticker_open:
                 create_trade_block(trans_id, ticker_close, 'Покупка', quantity_close) +
                 create_trade_block(trans_id+1, ticker_open, 'Покупка', quantity_open)
         )
-    # Условия для переоткрытия позиций по новому тикеру
+    # Условия для переоткрытия позиций в том же направлении по новому тикеру на ролловере
     elif current_predict == 'down' and prev_predict == 'down':
         trade_direction = 'SELL'
         trade_content = (
-                create_trade_block(trans_id, ticker_close, 'Продажа', quantity_close) +
+                create_trade_block(trans_id, ticker_close, 'Покупка', quantity_close) +
                 create_trade_block(trans_id+1, ticker_open, 'Продажа', quantity_open)
         )
     elif current_predict == 'up' and prev_predict == 'up':
         trade_direction = 'BUY'
         trade_content = (
-                create_trade_block(trans_id, ticker_close, 'Покупка', quantity_close) +
+                create_trade_block(trans_id, ticker_close, 'Продажа', quantity_close) +
                 create_trade_block(trans_id+1, ticker_open, 'Покупка', quantity_open)
         )
 
