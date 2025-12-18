@@ -33,7 +33,8 @@ md_path = Path(  # Путь к markdown-файлам
 cache_file = Path(  # Путь к pkl-файлу с кэшем
     settings['cache_file'].replace('{ticker_lc}', ticker_lc).replace('{provider}', provider))
 
-log_file = Path(__file__).parent / f"{ticker_lc}_create_embedding_{provider}_ollama.txt"
+(Path(Path(__file__).parent / 'log')).mkdir(parents=True, exist_ok=True)
+log_file = Path(__file__).parent / 'log' / f"{ticker_lc}_create_embedding_{provider}_ollama.txt"
 
 # Настройка логирования
 log_file.parent.mkdir(parents=True, exist_ok=True)
