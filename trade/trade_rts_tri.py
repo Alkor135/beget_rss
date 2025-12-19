@@ -5,7 +5,7 @@ import logging
 
 # --- Конфигурация ---
 # Торгуемые инструменты и количество
-ticker_close = 'RIZ5'  # Инструмент для закрытия позиции
+ticker_close = 'RIH6'  # Инструмент для закрытия позиции
 quantity_close = '2'
 ticker_open = 'RIH6'  # Инструмент для открытия новой позиции
 quantity_open = '2'
@@ -137,7 +137,8 @@ def create_trade_block(tr_id, ticker, action, quantity):
         f'Цена=0;'
         f'Количество={quantity};'
         f'Условие исполнения=Поставить в очередь;'
-        f'Комментарий=SPBFUT192yc//TRI;'
+        # f'Комментарий=SPBFUT192yc//TRI;'
+        f'Комментарий={tr_id} {today.strftime("%y%m%d")};'
         f'Переносить заявку=Нет;'
         f'Дата экспирации={expiry_date};'
         f'Код внешнего пользователя=;\n'
@@ -193,7 +194,8 @@ if trade_content:
     with trade_filepath.open('a', encoding='cp1251') as f:
         f.write(trade_content)
     logger.info(f'{prev_predict=}, {current_predict=}')
-    logger.info(f"Добавлена транзакция {trade_direction} с TRANS_ID={trans_id} в файл {trade_filepath}.\n")
+    logger.info(f"Добавлена транзакция {trade_direction} с TRANS_ID={trans_id} в файл {trade_filepath}.")
+    logger.info(f"Добавлена транзакция {trade_direction} с TRANS_ID={trans_id+1} в файл {trade_filepath}.\n")
 else:
     logger.info(
         f"На {today} условия для сигналов BUY или SELL не выполнены. "
