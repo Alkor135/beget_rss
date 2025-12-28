@@ -1,3 +1,7 @@
+"""
+Тестирование содержимого pkl файла
+"""
+
 import pickle
 import pandas as pd
 import numpy as np
@@ -23,13 +27,16 @@ df['loaded_at'] = pd.to_datetime(df['metadata'].apply(lambda x: x['loaded_at']))
 # Сортируем по дате
 df = df.sort_values('loaded_at').reset_index(drop=True)
 
-# Вывод первых 20 строк
-print(df['embedding'].head(5))
-print(df['embedding'].tail(5))
+with pd.option_context(  # Печать широкого и длинного датафрейма
+        "display.width", 1000,
+        "display.max_columns", 30,
+        "display.max_colwidth", 100
+):
+    # Вывод первых 20 строк
+    print(df['embedding'].head(5))
+    print(df['embedding'].tail(5))
 
-# Если нужно вывести все строки, можно использовать
-# pd.set_option('display.max_rows', None)
-print(df)
-print(df.columns)
-print(df['metadata'])
-print(df['metadata'][0])
+    print(df)
+    print(df.columns)
+    print(df['metadata'])
+    print(df['metadata'][0])

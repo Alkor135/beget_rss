@@ -308,6 +308,7 @@ def main(
         connection_day = sqlite3.connect(str(path_db_day))
         cursor_day = connection_day.cursor()
         create_tables(connection_day)
+        logger.info(f"Соединение с дневной БД: {str(path_db_day)}")
 
         # Удаляем последнюю запись, если она существует
         delete_latest_record(connection_day, cursor_day)
