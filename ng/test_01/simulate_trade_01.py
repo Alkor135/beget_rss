@@ -348,7 +348,7 @@ def main():
     df_rez.to_excel(out_result, index=False)
     logger.info(f"Итоговая таблица сохранена: {out_result}")
 
-    current_date = datetime.now().strftime("%Y-%m")
+    current_date = datetime.now().strftime("%Y-%m-%d")
     out_plot = BASE / f"{current_date}_prev_max_cumulative.png"
     plot_results(df_rez, out_plot)
     logger.info(f"График сохранён: {out_plot}")
