@@ -70,7 +70,7 @@ SCRIPTS = [
 
     r"mix/test_01/simulate_trade_01.py",
 
-    r"ng/test_01/multi_xlsx_01.py",
+    r"ng/test_01/simulate_trade_01.py",
 ]
 
 def run_script(script: str) -> int:
@@ -85,8 +85,11 @@ def main():
         code = run_script(script)
         if code != 0:
             print(f"❌ Ошибка выполнения {script}, код {code}")
+            os.system("pause")
             sys.exit(code)
     print("\n✅ Все скрипты выполнены успешно")
+    input("\nНажмите Enter для выхода...")  # вместо sys.exit вручную
+    os.system("pause")
 
 if __name__ == "__main__":
     main()
