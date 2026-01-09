@@ -1,6 +1,11 @@
 """
-Скрипт для создания и обновления кэша эмбеддингов markdown-файлов.
-Кэширует эмбеддинги в pickle-файл, обновляет только новые/изменённые файлы.
+Скрипт создаёт и обновляет кэш эмбеддингов для ежедневных markdown-отчётов.
+Использует Ollama (локально) для генерации векторных представлений текста.
+Поддерживает модели bge-m3 и qwen3-embedding:0.6b с разбивкой на чанки по токенам.
+Автоматически определяет неизменённые файлы через MD5-хэши и берёт их из кэша.
+Работает инкрементально: обрабатывает только новые или изменённые файлы.
+Результат сохраняется в pickle-файл для быстрой загрузки в других скриптах.
+Логирование в отдельный файл с ротацией (оставляет последние 3 лога).
 """
 
 from pathlib import Path
@@ -13,6 +18,7 @@ import yaml
 from datetime import datetime
 import pandas as pd
 import tiktoken
+import sys
 
 # Путь к settings.yaml в той же директории, что и скрипт
 SETTINGS_FILE = Path(__file__).parent / "settings.yaml"
@@ -27,6 +33,13 @@ ticker_lc = ticker.lower()
 url_ai = settings.get('url_ai', 'http://localhost:11434/api/embeddings')  # Ollama API без тайм-аута
 model_name = settings.get('model_name', 'bge-m3')  # Ollama модель
 md_path = Path(settings['md_path'])  # Путь к markdown-файлам
+if model_name == 'bge-m3':
+    max_chunk_tokens = 7000  # Для bge-m3 (8192 лимит минус запас)
+elif model_name == 'qwen3-embedding:0.6b':
+    max_chunk_tokens = 30000  # Для qwen3-embedding:0.6b (32768 лимит минус запас)
+else:
+    print('Проверь модель')
+    sys.exit()
 
 # Путь к pkl-файлу с кэшем
 cache_file = Path(settings['cache_file'].replace('{ticker_lc}', ticker_lc))
@@ -98,8 +111,8 @@ def build_embeddings_df(md_dir: Path, existing_df: pd.DataFrame | None) -> pd.Da
     MD5_hash (md5 содержимого файла),
     VECTORS (эмбеддинг файла через OllamaEmbeddingFunction).
     """
+    # Создаём lookup по TRADEDATE для существующего кэша
     cache_lookup = {}
-
     if existing_df is not None and not existing_df.empty:
         cache_lookup = {
             row["TRADEDATE"]: {
@@ -109,13 +122,13 @@ def build_embeddings_df(md_dir: Path, existing_df: pd.DataFrame | None) -> pd.Da
             for _, row in existing_df.iterrows()
         }
 
-    records = []
+    # Используем словарь, чтобы гарантировать уникальность TRADEDATE
+    result_dict = {}  # TRADEDATE -> {"MD5_hash": ..., "VECTORS": ...}
 
     md_files = sorted(md_dir.glob("*.md"))
     logging.info(f"Найдено markdown-файлов: {len(md_files)}")
 
     for md_file in md_files:
-        # Имя файла ожидается в формате YYYY-MM-DD.md
         try:
             tradedate_str = md_file.stem  # 'YYYY-MM-DD'
         except Exception as e:
@@ -135,35 +148,28 @@ def build_embeddings_df(md_dir: Path, existing_df: pd.DataFrame | None) -> pd.Da
         # MD5-хэш содержимого
         md5_hash = md5_of_file(md_file)
 
+        # Проверяем, изменился ли файл
         cached = cache_lookup.get(tradedate_str)
 
         if cached and cached["MD5_hash"] == md5_hash:
-            # === ФАЙЛ НЕ ИЗМЕНИЛСЯ ===
-            records.append(
-                {
-                    "TRADEDATE": tradedate_str,
-                    "MD5_hash": md5_hash,
-                    "VECTORS": cached["VECTORS"],
-                }
-            )
+            # Без изменений — берём из кэша
+            result_dict[tradedate_str] = {
+                "TRADEDATE": tradedate_str,
+                "MD5_hash": md5_hash,
+                "VECTORS": cached["VECTORS"],
+            }
             logging.info(f"{md_file.name}: без изменений, взято из кэша")
             continue
 
+        # === Файл изменился или его не было — пересчитываем ===
         # Разбиение на чанки по параграфам (сохраняет пустые строки как разделители)
         paragraphs = [p.strip() for p in text.split('\n\n') if p.strip()]
         chunks = []
         current_chunk = []
         current_len = 0
 
-        if model_name == 'bge-m3':
-            max_chunk_tokens = 7000  # Для bge-m3 (8192 лимит минус запас)
-        elif model_name == 'qwen3-embedding:0.6b':
-            max_chunk_tokens = 30000  # Для qwen3-embedding:0.6b (32768 лимит минус запас)
-        else:
-            print('Проверь модель')
-
         for para in paragraphs:
-            para_len = token_len(para)  # Примерно токены
+            para_len = token_len(para)
             if current_len + para_len > max_chunk_tokens and current_chunk:
                 chunks.append('\n\n'.join(current_chunk))
                 current_chunk = [para]
@@ -191,23 +197,22 @@ def build_embeddings_df(md_dir: Path, existing_df: pd.DataFrame | None) -> pd.Da
         # === ПРОВЕРКА РАЗМЕРНОСТИ ===
         dims = {len(e) for e in chunk_embeddings}
         if len(dims) != 1:
-            logging.error(
-                f"Несовпадение размерностей эмбеддингов в {md_file.name}: {dims}"
-            )
+            logging.error(f"Несовпадение размерностей эмбеддингов в {md_file.name}: {dims}")
             continue
 
         # === УСРЕДНЕНИЕ ===
         embedding = np.mean(chunk_embeddings, axis=0).tolist()
 
-        records.append(
-            {
-                "TRADEDATE": tradedate_str,
-                "MD5_hash": md5_hash,
-                "VECTORS": embedding,
-            }
-        )
+        # Записываем или перезаписываем запись по дате
+        result_dict[tradedate_str] = {
+            "TRADEDATE": tradedate_str,
+            "MD5_hash": md5_hash,
+            "VECTORS": embedding,
+        }
 
-    df = pd.DataFrame(records, columns=["TRADEDATE", "MD5_hash", "VECTORS"])
+    # Формируем датафрейм из словаря — гарантируем уникальность по дате
+    df = pd.DataFrame(list(result_dict.values()), columns=["TRADEDATE", "MD5_hash", "VECTORS"])
+    df = df.sort_values("TRADEDATE").reset_index(drop=True)  # Сортируем по дате
     logging.info(f"Создан датафрейм эмбеддингов, строк: {len(df)}")
     return df
 
@@ -225,6 +230,7 @@ if __name__ == "__main__":
     ):
         print("Датафрейм с эмбеддингами:")
         print(df_embeddings.head())
+
     print(len(df_embeddings['VECTORS'].iloc[0]))
 
     try:
