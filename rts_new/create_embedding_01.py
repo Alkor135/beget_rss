@@ -86,13 +86,6 @@ def token_len(text: str) -> int:
 # === Функция для эмбеддингов через Ollama ===
 ef = OllamaEmbeddingFunction(model_name=model_name)
 
-def md5_of_file(path: Path) -> str:
-    """Возвращает MD5-хэш содержимого файла."""
-    with open(path, 'r', encoding='utf-8') as file:
-        content = file.read()
-    md5_hash = hashlib.md5(content.encode('utf-8')).hexdigest()
-    return md5_hash
-
 def load_existing_cache(cache_file: Path) -> pd.DataFrame | None:
     if cache_file.exists():
         try:
@@ -146,7 +139,7 @@ def build_embeddings_df(md_dir: Path, existing_df: pd.DataFrame | None) -> pd.Da
             continue
 
         # MD5-хэш содержимого
-        md5_hash = md5_of_file(md_file)
+        md5_hash = hashlib.md5(text.encode('utf-8')).hexdigest()
 
         # Проверяем, изменился ли файл
         cached = cache_lookup.get(tradedate_str)
@@ -180,7 +173,14 @@ def build_embeddings_df(md_dir: Path, existing_df: pd.DataFrame | None) -> pd.Da
         if current_chunk:
             chunks.append('\n\n'.join(current_chunk))
 
-        logging.info(f"{md_file.name}: чанков={len(chunks)}, токенов~={current_len}")
+        # === ЗАЩИТА ОТ ПУСТЫХ ЧАНКОВ ===
+        # chunks = [c for c in chunks if c.strip()]
+        if not chunks:
+            logging.warning(f"{md_file.name}: все чанки пустые, файл пропущен")
+            continue
+
+        total_tokens = sum(token_len(p) for p in paragraphs)
+        logging.info(f"{md_file.name}: чанков={len(chunks)}, токенов={total_tokens}")
 
         # Эмбеддинги чанков
         chunk_embeddings = []
