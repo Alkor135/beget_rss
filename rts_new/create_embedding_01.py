@@ -37,6 +37,8 @@ if model_name == 'bge-m3':
     max_chunk_tokens = 7000  # Для bge-m3 (8192 лимит минус запас)
 elif model_name == 'qwen3-embedding:0.6b':
     max_chunk_tokens = 30000  # Для qwen3-embedding:0.6b (32768 лимит минус запас)
+elif model_name == 'embeddinggemma':
+    max_chunk_tokens = 1600  # Для embeddinggemma (2048 лимит минус запас)
 else:
     print('Проверь модель')
     sys.exit()
@@ -201,7 +203,7 @@ def build_embeddings_df(md_dir: Path, existing_df: pd.DataFrame | None) -> pd.Da
             continue
 
         # === УСРЕДНЕНИЕ ===
-        embedding = np.mean(chunk_embeddings, axis=0).tolist()
+        embedding = np.mean(chunk_embeddings, axis=0)  #.tolist()
 
         # Записываем или перезаписываем запись по дате
         result_dict[tradedate_str] = {
