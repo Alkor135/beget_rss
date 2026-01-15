@@ -231,7 +231,7 @@ if __name__ == "__main__":
         "display.max_colwidth", 120
     ):
         print("Датафрейм с эмбеддингами:")
-        print(df_embeddings.head())
+        print(df_embeddings)
 
     print(len(df_embeddings['VECTORS'].iloc[0]))
 
