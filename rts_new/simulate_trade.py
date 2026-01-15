@@ -222,14 +222,16 @@ def main(path_db_day, cache_file):
 
         pl_result = 0.0
 
-        if pl_max > 0.0:
-            # имя колонки с максимальным PL
-            best_pl_col = pl_values.idxmax()  # например "PL_7"
-            n = int(best_pl_col.split("_")[1])  # -> 7
+        # ---
+        # if pl_max > 0.0:
+        # имя колонки с максимальным PL
+        best_pl_col = pl_values.idxmax()  # например "PL_7"
+        n = int(best_pl_col.split("_")[1])  # -> 7
 
-            # соответствующая колонка MAX_n
-            max_col = f"MAX_{n}"
-            pl_result = row[max_col]
+        # соответствующая колонка MAX_n
+        max_col = f"MAX_{n}"
+        pl_result = row[max_col]
+        # ---
 
         rows.append({
             "TRADEDATE": trade_date,
@@ -265,7 +267,7 @@ def main(path_db_day, cache_file):
     # Сохранение графика
     plot_dir = Path(__file__).parent / 'plots'
     plot_dir.mkdir(exist_ok=True)
-    plot_path = plot_dir / f'cum_pl_{model_name}_{timestamp}.png'
+    plot_path = plot_dir / f'cum_pl_{model_name.split(':')[0]}_{timestamp}.png'
     plt.savefig(plot_path)
     logging.info(f"📊 График сохранён: {plot_path}")
     plt.close()  # Освобождаем память
