@@ -36,7 +36,7 @@ path_db_day = Path(settings['path_db_day'].replace('{ticker}', ticker))  # Пу�
 min_prev_files = settings.get('min_prev_files', 2)
 test_days = settings.get('test_days', 23) + 1
 START_DATE = settings.get('start_date', "2025-10-01")
-# START_DT = datetime.strptime(START_DATE, "%Y-%m-%d").date()
+model_name = settings.get('model_name', 'bge-m3')  # Ollama модель
 
 # === Логирование ===
 log_dir = Path(__file__).parent / 'log'
@@ -265,7 +265,7 @@ def main(path_db_day, cache_file):
     # Сохранение графика
     plot_dir = Path(__file__).parent / 'plots'
     plot_dir.mkdir(exist_ok=True)
-    plot_path = plot_dir / f'cumulative_pl_{timestamp}.png'
+    plot_path = plot_dir / f'cum_pl_{model_name}_{timestamp}.png'
     plt.savefig(plot_path)
     logging.info(f"📊 График сохранён: {plot_path}")
     plt.close()  # Освобождаем память
