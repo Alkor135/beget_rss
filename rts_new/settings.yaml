@@ -2,8 +2,8 @@
 
 ticker: 'RTS'
 ticker_lc: 'rts'
-#model_name: 'bge-m3'
-model_name: 'qwen3-embedding:0.6b'
+model_name: 'bge-m3'
+#model_name: 'qwen3-embedding:0.6b'
 #model_name: 'embeddinggemma'
 url_ai: 'http://localhost:11434/api/embeddings'
 min_prev_files: 2

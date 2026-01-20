@@ -36,7 +36,7 @@ md_path = Path(settings['md_path'])  # Путь к markdown-файлам
 if model_name == 'bge-m3':
     max_chunk_tokens = 7000  # Для bge-m3 (8192 лимит минус запас)
 elif model_name == 'qwen3-embedding:0.6b':
-    max_chunk_tokens = 30000  # Для qwen3-embedding:0.6b (32768 лимит минус запас)
+    max_chunk_tokens = 32000  # Для qwen3-embedding:0.6b (32768 лимит минус запас)
 elif model_name == 'embeddinggemma':
     max_chunk_tokens = 1600  # Для embeddinggemma (2048 лимит минус запас)
 else:

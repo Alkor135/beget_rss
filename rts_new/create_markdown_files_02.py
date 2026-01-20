@@ -101,6 +101,10 @@ def read_news_dbs_to_df(db_dir: Path, num_dbs: int | None = None) -> pd.DataFram
 
     df_all = pd.concat(all_rows, ignore_index=True)
 
+    # Выбор строк где в поле `provider` содержится `interfax` или `prime`.
+    # df_all = df_all[df_all['provider'].str.contains('interfax|prime', case=False, na=False)]
+    df_all = df_all[df_all['provider'].str.contains('investing', case=False, na=False)]
+
     # Приводим loaded_at к datetime и сортируем
     df_all["loaded_at"] = pd.to_datetime(df_all["loaded_at"])
     df_all = df_all.sort_values("loaded_at").reset_index(drop=True)
