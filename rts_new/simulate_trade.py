@@ -256,7 +256,7 @@ def main(path_db_day, cache_file):
     df_rez["CUM_P/L"] = df_rez["P/L"].cumsum()
 
     plt.figure(figsize=(12, 6))
-    plt.plot(df_rez.index, df_rez["CUM_P/L"])
+    plt.plot(df_rez.index, df_rez["CUM_P/L"], marker='o')
     plt.title(f"Cumulative P/L {model_name.split(':')[0]} {timestamp}")
     plt.xlabel("Date")
     plt.ylabel("P/L")
