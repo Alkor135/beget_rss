@@ -28,8 +28,8 @@ num_dbs = settings['num_dbs']
 time_start = settings['time_start']
 time_end = settings['time_end']
 path_db_day = Path(settings['path_db_day'].replace('{ticker}', ticker))
-db_news_dir = Path(settings['db_news_dir'])
-md_path = Path(settings['md_path'])
+db_news_dir = Path(r"C:\Users\Alkor\gd\db_rss_investing")
+md_path = Path(r"C:\Users\Alkor\gd\md_investing")
 
 # Создание папки для логов
 log_dir = Path(__file__).parent / 'log'
@@ -37,7 +37,7 @@ log_dir.mkdir(parents=True, exist_ok=True)
 
 # Имя файла лога с датой и временем запуска (один файл на запуск!)
 timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-log_file = log_dir / f'create_markdown_files_{timestamp}.txt'
+log_file = log_dir / f'create_markdown_investing_{timestamp}.txt'
 
 # Настройка логирования: ТОЛЬКО один файл + консоль
 logging.basicConfig(
@@ -52,7 +52,7 @@ logging.basicConfig(
 # Ручная очистка старых логов (оставляем только 3 самых новых)
 def cleanup_old_logs(log_dir: Path, max_files: int = 3):
     """Удаляет старые лог-файлы, оставляя max_files самых новых."""
-    log_files = sorted(log_dir.glob("create_markdown_files_*.txt"))
+    log_files = sorted(log_dir.glob("create_markdown_investing_*.txt"))
     if len(log_files) > max_files:
         for old_file in log_files[:-max_files]:
             try:
@@ -74,7 +74,7 @@ def read_news_dbs_to_df(db_dir: Path, num_dbs: int | None = None) -> pd.DataFram
     Колонки в таблице: loaded_at, date, title, provider.
     """
     db_files = sorted(
-        db_dir.glob("rss_news_*.db")
+        db_dir.glob("rss_news_investing_*.db")
     )
 
     if num_dbs is not None and num_dbs > 0:
@@ -86,7 +86,7 @@ def read_news_dbs_to_df(db_dir: Path, num_dbs: int | None = None) -> pd.DataFram
         try:
             with sqlite3.connect(db_file) as conn:
                 df_part = pd.read_sql_query(
-                    "SELECT loaded_at, date, title, provider FROM news",
+                    "SELECT date, title FROM news",
                     conn
                 )
                 df_part["source_db"] = db_file.name  # опционально: откуда строка
@@ -97,17 +97,13 @@ def read_news_dbs_to_df(db_dir: Path, num_dbs: int | None = None) -> pd.DataFram
 
     if not all_rows:
         logging.warning("Не удалось прочитать ни одного файла БД новостей")
-        return pd.DataFrame(columns=["loaded_at", "date", "title", "provider", "source_db"])
+        return pd.DataFrame(columns=["date", "title", "source_db"])
 
     df_all = pd.concat(all_rows, ignore_index=True)
 
-    # Выбор строк где в поле `provider` содержится `interfax` или `prime`.
-    # df_all = df_all[df_all['provider'].str.contains('interfax|prime', case=False, na=False)]
-    # df_all = df_all[df_all['provider'].str.contains('investing', case=False, na=False)]
-
-    # Приводим loaded_at к datetime и сортируем
-    df_all["loaded_at"] = pd.to_datetime(df_all["loaded_at"])
-    df_all = df_all.sort_values("loaded_at").reset_index(drop=True)
+    # Приводим date к datetime и сортируем
+    df_all["date"] = pd.to_datetime(df_all["date"])
+    df_all = df_all.sort_values("date").reset_index(drop=True)
 
     return df_all
 
@@ -191,9 +187,9 @@ def create_markdown_files_from_intervals(
     # ==== 2. Создаём только отсутствующие файлы ====
 
     # Убедимся, что loaded_at в datetime
-    if not pd.api.types.is_datetime64_any_dtype(df_news["loaded_at"]):
+    if not pd.api.types.is_datetime64_any_dtype(df_news["date"]):
         df_news = df_news.copy()
-        df_news["loaded_at"] = pd.to_datetime(df_news["loaded_at"])
+        df_news["date"] = pd.to_datetime(df_news["date"])
 
     for start_dt, end_dt in intervals:
         # Имя файла по дате конца интервала
@@ -207,8 +203,8 @@ def create_markdown_files_from_intervals(
             continue
 
         # Фильтрация новостей по интервалу
-        mask = (df_news["loaded_at"] >= start_dt) & (df_news["loaded_at"] <= end_dt)
-        df_slice = df_news.loc[mask].sort_values("loaded_at")
+        mask = (df_news["date"] >= start_dt) & (df_news["date"] <= end_dt)
+        df_slice = df_news.loc[mask].sort_values("date")
 
         if df_slice.empty:
             continue  # нет новостей — файл не создаём

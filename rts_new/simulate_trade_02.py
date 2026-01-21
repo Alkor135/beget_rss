@@ -24,6 +24,8 @@ import matplotlib.pyplot as plt
 # Путь к settings.yaml в той же директории, что и скрипт
 SETTINGS_FILE = Path(__file__).parent / "settings.yaml"
 
+_CHUNK_MATRIX_CACHE = {}  # Кэш для матриц чанков
+
 # Чтение настроек
 with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
     settings = yaml.safe_load(f)
@@ -35,7 +37,7 @@ cache_file = Path(settings['cache_file'].replace('{ticker_lc}', ticker_lc))  # �
 path_db_day = Path(settings['path_db_day'].replace('{ticker}', ticker))  # Путь к БД дневных котировок
 min_prev_files = settings.get('min_prev_files', 2)
 test_days = settings.get('test_days', 23) + 1
-START_DATE = settings.get('start_date', "2025-07-01")
+START_DATE = settings.get('start_date', "2025-10-01")
 model_name = settings.get('model_name', 'bge-m3')  # Ollama модель
 
 # === Логирование ===
@@ -91,23 +93,55 @@ def load_cache(cache_file_path):
     df['TRADEDATE'] = pd.to_datetime(df['TRADEDATE'])
     return df.set_index('TRADEDATE').sort_index()
 
-def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
+def chunks_to_matrix(chunks):
+    key = id(chunks)
+    if key not in _CHUNK_MATRIX_CACHE:
+        _CHUNK_MATRIX_CACHE[key] = np.vstack(
+            [c["embedding"] for c in chunks]
+        ).astype(np.float32)
+    return _CHUNK_MATRIX_CACHE[key]
+
+def cosine(a: np.ndarray, b: np.ndarray) -> float:
     """Сравнение по косинусному сходству"""
-    denom = (np.linalg.norm(a) * np.linalg.norm(b))
-    if denom == 0:
+    # эмбеддинги уже L2-нормализованы
+    return float(np.dot(a, b))
+
+def chunks_similarity_fast(
+    chunks_a: list,
+    chunks_b: list,
+    top_k: int = 5
+) -> float:
+    """    Быстрое retriever-grade similarity через матричное умножение    """
+
+    if not chunks_a or not chunks_b:
         return 0.0
-    return float(np.dot(a, b) / denom)
+
+    A = chunks_to_matrix(chunks_a)  # (Na, D)
+    B = chunks_to_matrix(chunks_b)  # (Nb, D)
+
+    # Все cosine similarity сразу
+    S = A @ B.T  # (Na, Nb)
+
+    # top-k по всем значениям
+    flat = S.ravel()
+
+    if flat.size <= top_k:
+        return float(flat.mean())
+
+    # быстрее чем sort
+    top = np.partition(flat, -top_k)[-top_k:]
+    return float(top.mean())
+
 
 def compute_max_k(
     df: pd.DataFrame,
     start_date: pd.Timestamp,
     k: int,
-    col_vectors: str = "VECTORS",
-    col_body: str = "NEXT_BODY"
+    col_chunks: str = "CHUNKS",
+    col_body: str = "NEXT_BODY",
+    top_k_chunks: int = 5
 ) -> pd.Series:
-    """
-    Возвращает Series для колонки MAX_k
-    """
+
     result = pd.Series(index=df.index, dtype=float)
 
     dates = df.index
@@ -117,19 +151,24 @@ def compute_max_k(
         if i < k:
             continue
 
-        vec_cur = df.iloc[i][col_vectors]
+        chunks_cur = df.iloc[i][col_chunks]
         body_cur = df.iloc[i][col_body]
 
         similarities = []
         indices = []
 
         for j in range(i - k, i):
-            vec_prev = df.iloc[j][col_vectors]
-            sim = cosine_similarity(vec_cur, vec_prev)
+            chunks_prev = df.iloc[j][col_chunks]
+
+            sim = chunks_similarity_fast(
+                chunks_cur,
+                chunks_prev,
+                top_k=top_k_chunks
+            )
+
             similarities.append(sim)
             indices.append(j)
 
-        # индекс самой похожей строки
         best_j = indices[int(np.argmax(similarities))]
         body_prev = df.iloc[best_j][col_body]
 
@@ -145,7 +184,7 @@ def main(path_db_day, cache_file):
     df_emb = load_cache(cache_file)  # Загрузка DF с векторами новостей
 
     # Объединение датафреймов по индексу TRADEDATE
-    df_combined = df_bar.join(df_emb[['VECTORS']], how='inner')  # 'inner' — только общие даты
+    df_combined = df_bar.join(df_emb[['CHUNKS']], how='inner')  # 'inner' — только общие даты
 
     # Генерация колонок MAX_3 … MAX_30
     start_date = pd.to_datetime(START_DATE)
@@ -182,7 +221,7 @@ def main(path_db_day, cache_file):
     ):
         print(df_bar)
         print(df_emb)
-        print(df_combined[["NEXT_BODY", "VECTORS"]])
+        print(df_combined[["NEXT_BODY", "CHUNKS"]])
         print(df_combined)
 
     # === Замена NaN на 0.0 во всех колонках ===
