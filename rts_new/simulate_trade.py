@@ -235,7 +235,8 @@ def main(path_db_day, cache_file):
 
         rows.append({
             "TRADEDATE": trade_date,
-            "P/L": pl_result
+            "P/L": pl_result,
+            "max": n
         })
 
     df_rez = pd.DataFrame(rows).set_index("TRADEDATE")
@@ -251,23 +252,52 @@ def main(path_db_day, cache_file):
         print(df_rez)
 
     # ===============================
-    # График cumulative P/L
+    # График cumulative P/L + наложенная столбчатая диаграмма max
     # ===============================
     df_rez["CUM_P/L"] = df_rez["P/L"].cumsum()
 
-    plt.figure(figsize=(12, 6))
-    plt.plot(df_rez.index, df_rez["CUM_P/L"], marker='o')
-    plt.title(f"Cumulative P/L {model_name.split(':')[0]} {timestamp}")
-    plt.xlabel("Date")
-    plt.ylabel("P/L")
-    plt.grid(True)
-    plt.tight_layout()
-    # plt.show()
+    fig, ax1 = plt.subplots(figsize=(12, 7))
+
+    # Основной график: Cumulative P/L (справа)
+    ax1.plot(
+        df_rez.index, df_rez["CUM_P/L"],
+        marker='o',
+        markersize=4,
+        color='tab:blue',
+        label='Cumulative P/L'
+    )
+    ax1.set_ylabel("Cumulative P/L", color='tab:blue')
+    ax1.tick_params(axis='y', labelcolor='tab:blue')
+    ax1.set_xlabel("Date")
+    ax1.grid(True, axis='y', alpha=0.3)
+    ax1.set_title(f"Cumulative P/L & Best Window (k) {model_name.split(':')[0]} {timestamp}")
+
+    # Вторая ось Y для столбчатой диаграммы (слева)
+    ax2 = ax1.twinx()
+    ax2.bar(
+        df_rez.index, df_rez["max"],
+        alpha=0.5,
+        color='tab:green',
+        width=0.5,
+        label="Best Window (k)"
+    )
+    ax2.set_ylabel("Best Window (k)", color='tab:green')
+    ax2.tick_params(axis='y', labelcolor='tab:green')
+    ax2.set_ylim(df_rez["max"].min() - 1, df_rez["max"].max() + 1)
+
+    # Объединение легенды
+    lines1, labels1 = ax1.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper left')
+
+    # Оформление оси X
+    plt.setp(ax1.xaxis.get_majorticklabels(), rotation=45)
+    fig.tight_layout()
 
     # Сохранение графика
     plot_dir = Path(__file__).parent / 'plots'
     plot_dir.mkdir(exist_ok=True)
-    plot_path = plot_dir / f'cum_pl_{model_name.split(':')[0]}_{timestamp}.png'
+    plot_path = plot_dir / f'cum_pl_{model_name.split(":")[0]}_{timestamp}.png'
     plt.savefig(plot_path)
     logging.info(f"📊 График сохранён: {plot_path}")
     plt.close()  # Освобождаем память
