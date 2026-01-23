@@ -101,7 +101,7 @@ def read_news_dbs_to_df(db_dir: Path, num_dbs: int | None = None) -> pd.DataFram
 
     df_all = pd.concat(all_rows, ignore_index=True)
 
-    # Выбор строк где в поле `provider` содержится `interfax` или `prime`.
+    # Выбор строк где в поле `provider` содержится `interfax` или `prime` ('investing').
     # df_all = df_all[df_all['provider'].str.contains('interfax|prime', case=False, na=False)]
     # df_all = df_all[df_all['provider'].str.contains('investing', case=False, na=False)]
 
