@@ -185,7 +185,7 @@ def build_embeddings_df(md_dir: Path, existing_df: pd.DataFrame | None) -> pd.Da
             continue
 
         total_tokens = sum(token_len(p) for p in paragraphs)
-        logging.info(f"{md_file.name}: чанков={len(chunks)}, токенов={total_tokens}")
+        logging.info(f"{md_file.name}: чанков={len(chunks)}, токенов={total_tokens}, модель={model_name}")
 
         # Эмбеддинги чанков
         chunk_records = []

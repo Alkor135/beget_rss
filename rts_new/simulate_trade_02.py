@@ -37,8 +37,9 @@ cache_file = Path(settings['cache_file'].replace('{ticker_lc}', ticker_lc))  # �
 path_db_day = Path(settings['path_db_day'].replace('{ticker}', ticker))  # Путь к БД дневных котировок
 min_prev_files = settings.get('min_prev_files', 2)
 test_days = settings.get('test_days', 23) + 1
-START_DATE = settings.get('start_date', "2025-10-01")
+START_DATE = settings.get('start_date_test', "2025-10-01")
 model_name = settings.get('model_name', 'bge-m3')  # Ollama модель
+provider = settings['provider']
 
 # === Логирование ===
 log_dir = Path(__file__).parent / 'log'
@@ -290,6 +291,9 @@ def main(path_db_day, cache_file):
     ):
         print(df_rez)
 
+    # # Сохранение DataFrame в Excel файл
+    # df_rez.to_excel('df_rez_output.xlsx', index=False)
+
     # ===============================
     # График cumulative P/L + наложенная столбчатая диаграмма max
     # ===============================
@@ -336,7 +340,7 @@ def main(path_db_day, cache_file):
     # Сохранение графика
     plot_dir = Path(__file__).parent / 'plots'
     plot_dir.mkdir(exist_ok=True)
-    plot_path = plot_dir / f'cum_pl_{model_name.split(":")[0]}_{timestamp}.png'
+    plot_path = plot_dir / f'{model_name.split(":")[0]}_{provider}_{timestamp}.png'
     plt.savefig(plot_path)
     logging.info(f"📊 График сохранён: {plot_path}")
     plt.close()  # Освобождаем память

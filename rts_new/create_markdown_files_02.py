@@ -30,6 +30,7 @@ time_end = settings['time_end']
 path_db_day = Path(settings['path_db_day'].replace('{ticker}', ticker))
 db_news_dir = Path(settings['db_news_dir'])
 md_path = Path(settings['md_path'])
+provider = settings['provider']
 
 # Создание папки для логов
 log_dir = Path(__file__).parent / 'log'
@@ -101,13 +102,15 @@ def read_news_dbs_to_df(db_dir: Path, num_dbs: int | None = None) -> pd.DataFram
 
     df_all = pd.concat(all_rows, ignore_index=True)
 
-    # Выбор строк где в поле `provider` содержится `interfax` или `prime` ('investing').
-    # df_all = df_all[df_all['provider'].str.contains('interfax|prime', case=False, na=False)]
-    # df_all = df_all[df_all['provider'].str.contains('investing', case=False, na=False)]
+    # Выбор строк новостей по провайдерам (investing, prime, interfax).
+    if provider=='investing':
+        df_all = df_all[df_all['provider'].str.contains('investing', case=False, na=False)]
+    elif provider=='prime_interfax':
+        df_all = df_all[df_all['provider'].str.contains('interfax|prime', case=False, na=False)]
 
     # Приводим loaded_at к datetime и сортируем
     df_all["loaded_at"] = pd.to_datetime(df_all["loaded_at"])
-    df_all = df_all.sort_values("loaded_at").reset_index(drop=True)
+    df_all = df_all.sort_values(["loaded_at", "provider", "title"]).reset_index(drop=True)
 
     return df_all
 
