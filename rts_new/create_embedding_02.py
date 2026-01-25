@@ -42,6 +42,7 @@ elif model_name == 'qwen3-embedding:0.6b':
 elif model_name == 'embeddinggemma':
     #max_chunk_tokens = 1800  # Для embeddinggemma (2048 лимит минус запас)
     max_chunk_tokens = 512  # retriever-grade
+    # max_chunk_tokens = 200  # проба низкого значения
 else:
     print('Проверь модель')
     sys.exit()
