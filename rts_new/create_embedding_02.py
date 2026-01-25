@@ -19,6 +19,7 @@ from datetime import datetime
 import pandas as pd
 import tiktoken
 import sys
+import time
 
 # Путь к settings.yaml в той же директории, что и скрипт
 SETTINGS_FILE = Path(__file__).parent / "settings.yaml"
@@ -128,6 +129,8 @@ def build_embeddings_df(md_dir: Path, existing_df: pd.DataFrame | None) -> pd.Da
     logging.info(f"Найдено markdown-файлов: {len(md_files)}")
 
     for md_file in md_files:
+        file_start_time = time.perf_counter()  # ⏱️ Старт обработки файла
+
         try:
             tradedate_str = md_file.stem  # 'YYYY-MM-DD'
         except Exception as e:
@@ -157,7 +160,8 @@ def build_embeddings_df(md_dir: Path, existing_df: pd.DataFrame | None) -> pd.Da
                 "MD5_hash": md5_hash,
                 "CHUNKS": cached["CHUNKS"],
             }
-            logging.info(f"{md_file.name}: без изменений, взято из кэша")
+            file_time = time.perf_counter() - file_start_time
+            logging.info(f"{md_file.name}: без изменений, взято из кэша. Время: {file_time:.2f} сек.")
             continue
 
         # === Файл изменился или его не было — пересчитываем ===
@@ -221,6 +225,11 @@ def build_embeddings_df(md_dir: Path, existing_df: pd.DataFrame | None) -> pd.Da
             "CHUNKS": chunk_records,
         }
 
+        # Логирование времени обработки markdown-файла
+        file_end_time = time.perf_counter()
+        file_total_time = file_end_time - file_start_time
+        logging.info(f"{md_file.name}: обработка завершена. Время: {file_total_time:.2f} сек.")
+
     # Формируем датафрейм из словаря — гарантируем уникальность по дате
     df = pd.DataFrame(list(result_dict.values()), columns=["TRADEDATE", "MD5_hash", "CHUNKS"])
     df = df.sort_values("TRADEDATE").reset_index(drop=True)  # Сортируем по дате
@@ -228,9 +237,14 @@ def build_embeddings_df(md_dir: Path, existing_df: pd.DataFrame | None) -> pd.Da
     return df
 
 if __name__ == "__main__":
+    start_time = time.perf_counter()  # ⏱️ Старт таймера
+
     existing_df = load_existing_cache(cache_file)
 
     df_embeddings = build_embeddings_df(md_path, existing_df)
+
+    end_time = time.perf_counter()  # ⏱️ Конец таймера
+    total_time = end_time - start_time
 
     print(len(df_embeddings))
 
@@ -252,3 +266,6 @@ if __name__ == "__main__":
         logging.info(f"Кэш обновлён в {cache_file}, всего записей: {len(df_embeddings)}")
     except Exception as e:
         logging.error(f"Ошибка при сохранении кэша в {cache_file}: {str(e)}")
+
+    # 📊 Логируем общее время выполнения
+    logging.info(f"✅ Скрипт завершён. Общее время выполнения: {total_time:.2f} сек.")

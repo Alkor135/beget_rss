@@ -23,7 +23,7 @@ with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
 
 ticker = settings['ticker']
 ticker_lc = ticker.lower()
-num_mds = settings['num_mds']
+num_mds = settings['num_mds']  # Количество последних интервалов (дней) для сохранения в markdown файлы
 num_dbs = settings['num_dbs']
 time_start = settings['time_start']
 time_end = settings['time_end']
@@ -245,7 +245,7 @@ if __name__ == "__main__":
         db_path=path_db_day,  # из settings.yaml
         time_start=time_start,
         time_end=time_end,
-        table_name="Futures"
+        table_name="Futures"  # Таблица в БД котировок
     )
     for it in intervals[:5]:
         print(it)
