@@ -324,7 +324,7 @@ def main(path_db_day, cache_file):
     with pd.option_context(
         "display.width", 1000,
         "display.max_columns", 10,
-        "display.max_colwidth", 100
+        "display.max_colwidth", 120
     ):
         print(df_bar)
         print(df_emb)
@@ -345,7 +345,7 @@ def main(path_db_day, cache_file):
     with pd.option_context(
         "display.width", 1000,
         "display.max_columns", 24,
-        "display.max_colwidth", 100,
+        "display.max_colwidth", 120,
         "display.min_rows", 30
     ):
         print(df_combined[[f"PL_{k}" for k in range(3, 31)]])
@@ -393,7 +393,7 @@ def main(path_db_day, cache_file):
     with pd.option_context(
             "display.width", 1000,
             "display.max_columns", 10,
-            "display.max_colwidth", 100
+            "display.max_colwidth", 120
     ):
         print(df_rez)
 

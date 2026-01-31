@@ -28,7 +28,7 @@ df_embeddings = pd.read_pickle(pkl_path)
 with pd.option_context(
         "display.width", 1000,
         "display.max_columns", 10,
-        "display.max_colwidth", 120
+        "display.max_colwidth", 100
 ):
     print("Датафрейм с эмбеддингами:")
     print(df_embeddings)
