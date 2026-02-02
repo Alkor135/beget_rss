@@ -5,13 +5,13 @@ ticker_lc: 'rts'
 
 # Выбор модели для векторизации
 #model_name: 'bge-m3'
-model_name: 'qwen3-embedding:0.6b'
-#model_name: 'embeddinggemma'
+#model_name: 'qwen3-embedding:0.6b'
+model_name: 'embeddinggemma'
 
 # Выбор новостей по провайдеру
-#provider: 'investing_prime_interfax'
+provider: 'investing_prime_interfax'
 #provider: 'investing'
-provider: 'prime_interfax'
+#provider: 'prime_interfax'
 
 url_ai: 'http://localhost:11434/api/embeddings'
 min_prev_files: 2
