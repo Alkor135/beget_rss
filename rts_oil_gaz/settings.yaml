@@ -24,7 +24,8 @@ start_date_test: '2025-10-01'  # Дата начала тестирования
 test_days: 23  # Количество дней для тестирования
 
 #md_path: 'C:/Users/Alkor/gd/md_rss_all'
-md_path: 'C:/md_news/md_rss_all_oil_gaz'
+md_path: 'C:/Users/Alkor/gd/md_rss_all_oil_gaz'
+#md_path: 'C:/md_news/md_rss_all_oil_gaz'
 path_db_minute: 'C:/Users/Alkor/gd/data_quote_db/{ticker}_futures_minute_2025.db'
 path_db_day: 'C:/Users/Alkor/gd/data_quote_db/{ticker}_futures_day_2025_21-00.db'
 db_news_dir: 'C:/Users/Alkor/gd/db_rss'

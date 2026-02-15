@@ -262,6 +262,7 @@ def compute_max_k(
             result.iloc[i] = -abs(body_cur)
 
     return result
+    # return result *= -1
 
 
 def main(path_db_day, cache_file):
@@ -284,7 +285,7 @@ def main(path_db_day, cache_file):
 
     # --- Сохраняем explain-результаты в pickle для дальнейшего анализа ---
     explain_dir = cache_file.parent
-    explain_path = explain_dir / f"explain_topk_all_{timestamp}.pkl"
+    explain_path = explain_dir / f"explain_topk_all.pkl"  # _{timestamp}
     try:
         with open(explain_path, "wb") as ef:
             pickle.dump(EXPLAIN_STORE, ef)
@@ -309,6 +310,10 @@ def main(path_db_day, cache_file):
     df_combined[max_cols] = df_combined[max_cols].fillna(0.0)
 
     # === Расчёт PL_ колонок ===
+    # # --- Добавим инверсию здесь ---
+    # max_cols = [f"MAX_{k}" for k in range(3, 31)]
+    # df_combined[max_cols] *= -1
+    # # ------------------------------
     for k in range(3, 31):
         max_col = f"MAX_{k}"
         pl_col = f"PL_{k}"
@@ -319,6 +324,10 @@ def main(path_db_day, cache_file):
             .rolling(window=test_days, min_periods=1)
             .sum()
         )
+
+    # # === ИНВЕРСИЯ: переворачиваем все PL-значения для зеркального графика ===
+    # for k in range(3, 31):
+    #     df_combined[f"PL_{k}"] *= -1
 
     # Отладочный вывод
     with pd.option_context(
@@ -403,6 +412,11 @@ def main(path_db_day, cache_file):
     # ===============================
     # График cumulative P/L + наложенная столбчатая диаграмма max
     # ===============================
+
+    # --- ЗЕРКАЛЬНОЕ ОТОБРАЖЕНИЕ ---
+    df_rez["P/L"] *= -1
+    # -------------------------------
+
     df_rez["CUM_P/L"] = df_rez["P/L"].cumsum()
 
     fig, ax1 = plt.subplots(figsize=(12, 7))
