@@ -310,10 +310,6 @@ def main(path_db_day, cache_file):
     df_combined[max_cols] = df_combined[max_cols].fillna(0.0)
 
     # === Расчёт PL_ колонок ===
-    # # --- Добавим инверсию здесь ---
-    # max_cols = [f"MAX_{k}" for k in range(3, 31)]
-    # df_combined[max_cols] *= -1
-    # # ------------------------------
     for k in range(3, 31):
         max_col = f"MAX_{k}"
         pl_col = f"PL_{k}"
@@ -324,10 +320,6 @@ def main(path_db_day, cache_file):
             .rolling(window=test_days, min_periods=1)
             .sum()
         )
-
-    # # === ИНВЕРСИЯ: переворачиваем все PL-значения для зеркального графика ===
-    # for k in range(3, 31):
-    #     df_combined[f"PL_{k}"] *= -1
 
     # Отладочный вывод
     with pd.option_context(
@@ -357,6 +349,7 @@ def main(path_db_day, cache_file):
         "display.max_colwidth", 120,
         "display.min_rows", 30
     ):
+        print("\nКомбинированный DataFrame (df_combined) с MAX_ и PL_ колонками:")
         print(df_combined[[f"PL_{k}" for k in range(3, 31)]])
 
     # ===============================
@@ -404,6 +397,7 @@ def main(path_db_day, cache_file):
             "display.max_columns", 10,
             "display.max_colwidth", 120
     ):
+        print("\nРезультирующий DataFrame (df_rez):")
         print(df_rez)
 
     # # Сохранение DataFrame в Excel файл
@@ -413,9 +407,9 @@ def main(path_db_day, cache_file):
     # График cumulative P/L + наложенная столбчатая диаграмма max
     # ===============================
 
-    # --- ЗЕРКАЛЬНОЕ ОТОБРАЖЕНИЕ ---
-    df_rez["P/L"] *= -1
-    # -------------------------------
+    # # --- ЗЕРКАЛЬНОЕ ОТОБРАЖЕНИЕ ---
+    # df_rez["P/L"] *= -1
+    # # -------------------------------
 
     df_rez["CUM_P/L"] = df_rez["P/L"].cumsum()
 
