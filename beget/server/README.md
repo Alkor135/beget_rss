@@ -26,7 +26,6 @@
 ## Конфигурация
 Настройки сохраняются в `beget/server/settings.yaml`:
 - `base_dir` — директория для SQLite-файлов (например `/home/user/rss_scraper/db_data`)
-- `url_investing`, `url_interfax`, `url_prime` — RSS-URL провайдеров
 
 Пример: файл уже включён в репозиторий — редактируйте при необходимости.
 
@@ -36,7 +35,6 @@
   - `python beget/server/rss_scraper_prime_to_db_month_msk.py`
   - `python beget/server/rss_scraper_interfax_to_db_month_msk.py`
   - или единым скриптом `python beget/server/rss_scraper_all_providers_to_db_month_msk.py`
-- Скрипт для последовательного запуска: `beget/server/run_rss_scrapers.sh` (сделать исполняемым).
 
 ## Логирование
 - Логи хранятся в папке `log` рядом со скриптами (настраивается в коде).
@@ -47,12 +45,13 @@
 - Файлы БД находятся в папке `base_dir` и имеют имя вида `rss_news_YYYY_MM.db` (или с префиксом `rss_news_investing_`, `rss_news_prime_`, `rss_news_interfax_` в соответствующих скриптах).
 
 ## Автоматизация
-Рекомендуется запускать `beget/server/run_rss_scrapers.sh` 
-
 через cron / systemd timer. 
-Пример cron (ежечасно):
+Пример cron (ежеминутно):
 ```cron
-* * * * * /home/user/rss_scraper/run_rss_scrapers.sh
+* * * * * /home/user/rss_scraper/venv/bin/python /home/user/rss_scraper/rss_scraper_all_providers_to_db_month_msk.py
+```
+```cron
+* * * * * /usr/bin/flock -n /tmp/rss_scraper.lock timeout 55s /home/user/rss_scraper/venv/bin/python /home/user/rss_scraper/rss_scraper_all_providers_to_db_month_msk.py > /home/user/rss_scraper/cron.log 2>&1
 ```
 ## Отладка и распространённые проблемы
 - Сетевая проблема: проверьте доступность RSS-URL и таймауты в коде (aiohttp.ClientTimeout).
@@ -61,7 +60,9 @@
 
 ## Полезные пути в репозитории
 - Основной объединённый скрипт: `beget/server/rss_scraper_all_providers_to_db_month_msk.py`
-- Скрипты по провайдерам: `beget/server/rss_scraper_investing_to_db_month_msk.py`, `beget/server/rss_scraper_interfax_to_db_month_msk.py`, `beget/server/rss_scraper_prime_to_db_month_msk.py`
+- Скрипты по провайдерам: 
+  - `beget/server/rss_scraper_investing_to_db_month_msk.py`, 
+  - `beget/server/rss_scraper_interfax_to_db_month_msk.py`, 
+  - `beget/server/rss_scraper_prime_to_db_month_msk.py`
 - Конфиг: `beget/server/settings.yaml`
 - Зависимости: `beget/server/requirements.txt`
-- Скрипт запуска: `beget/server/run_rss_scrapers.sh`
