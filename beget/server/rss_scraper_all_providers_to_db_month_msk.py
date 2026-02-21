@@ -51,9 +51,7 @@ LOG_FILE = Path(LOG_DIR / "rss_scraper_all_providers_to_db_month_msk.log")
 os.makedirs(BASE_DIR, exist_ok=True)
 os.makedirs(LOG_DIR, exist_ok=True)
 
-logging.Formatter.converter = lambda *args: datetime.now(
-    timezone('Europe/Moscow')
-).timetuple()
+logging.Formatter.converter = lambda *args: datetime.now(timezone('Europe/Moscow')).timetuple()
 
 log_formatter = logging.Formatter(
     fmt='%(asctime)s - %(levelname)s - %(message)s',
@@ -185,10 +183,7 @@ async def gather_all_news():
     semaphore = asyncio.Semaphore(MAX_CONCURRENT)
     timeout = aiohttp.ClientTimeout(total=40)
 
-    async with aiohttp.ClientSession(
-        timeout=timeout,
-        headers=HTTP_HEADERS
-    ) as session:
+    async with aiohttp.ClientSession(timeout=timeout, headers=HTTP_HEADERS) as session:
 
         tasks = []
 
@@ -279,10 +274,7 @@ def save_to_sqlite(news_list: list[dict], base_dir: str):
 
 def main():
     try:
-        logging.info(
-            f"Запуск сбора данных: "
-            f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-        )
+        logging.info(f"Запуск сбора данных: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
         all_news = asyncio.run(gather_all_news())
 
